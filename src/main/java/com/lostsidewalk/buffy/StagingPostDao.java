@@ -38,7 +38,7 @@ class StagingPostDao {
                     "post_url," +
                     "post_img_url," +
                     "importer_id," +
-                    "tag_name," +
+                    "feed_ident," +
                     "object_source," +
                     "import_timestamp," +
                     "post_status" +
@@ -54,7 +54,7 @@ class StagingPostDao {
                 stagingPost.getPostUrl(),
                 stagingPost.getPostImgUrl(),
                 stagingPost.getImporterId(),
-                stagingPost.getTagName(),
+                stagingPost.getFeedIdent(),
                 stagingPost.getSourceObj().toString(),
                 stagingPost.getImportTimestamp(),
                 stagingPost.getPostStatus()
@@ -69,7 +69,7 @@ class StagingPostDao {
         String postUrl = rs.getString("post_url");
         String postImgUrl = rs.getString("post_img_url");
         String importerId = rs.getString("importer_id");
-        String tagName = rs.getString("tag_name");
+        String feedIdent = rs.getString("feed_ident");
         String sourceObj = ((PGobject) rs.getObject("object_source")).getValue();
         Date importTimestamp = rs.getTimestamp("import_timestamp");
         String postStatus = rs.getString("post_status");
@@ -77,7 +77,7 @@ class StagingPostDao {
 
         StagingPost p = new StagingPost(
                 importerId,
-                tagName,
+                feedIdent,
                 importerId, // TODO: add importerDesc
                 postTitle,
                 postDesc,
@@ -101,12 +101,12 @@ class StagingPostDao {
 
     private static final String FIND_PUB_PENDING_SQL = "select * from staging_posts where post_status = 'PUB_PENDING'";
 
-    private static final String FIND_PUB_PENDING_BY_TAG_SQL = "select * from staging_posts where post_status = 'PUB_PENDING' and tag_name = ?";
+    private static final String FIND_PUB_PENDING_BY_FEED_SQL = "select * from staging_posts where post_status = 'PUB_PENDING' and feed_ident = ?";
 
     @SuppressWarnings("unused")
-    List<StagingPost> getPubPending(String tag) {
-        if (isNotBlank(tag)) {
-            return jdbcTemplate.query(FIND_PUB_PENDING_BY_TAG_SQL, new Object[] { tag }, STAGING_POST_ROW_MAPPER);
+    List<StagingPost> getPubPending(String feedIdent) {
+        if (isNotBlank(feedIdent)) {
+            return jdbcTemplate.query(FIND_PUB_PENDING_BY_FEED_SQL, new Object[] { feedIdent }, STAGING_POST_ROW_MAPPER);
         }
 
         return jdbcTemplate.query(FIND_PUB_PENDING_SQL, STAGING_POST_ROW_MAPPER);
@@ -138,6 +138,13 @@ class StagingPostDao {
     @SuppressWarnings("unused")
     List<StagingPost> findAllPublished() {
         return jdbcTemplate.query(FIND_ALL_PUBLISHED_SQL, STAGING_POST_ROW_MAPPER);
+    }
+
+    private static final String FIND_ALL_PUBLISHED_BY_FEED_SQL = "select * from staging_posts where is_published = true and feed_ident = ?";
+
+    @SuppressWarnings("unused")
+    List<StagingPost> findPublishedByFeed(String feedIdent) {
+        return jdbcTemplate.query(FIND_ALL_PUBLISHED_BY_FEED_SQL, new Object[] { feedIdent }, STAGING_POST_ROW_MAPPER);
     }
 
     private static final String CHECK_PUBLISHED_BY_ID_SQL_TEMPLATE = "select is_published from staging_posts where id = %s";
