@@ -1,4 +1,6 @@
-
+--
+-- staging_posts table
+--
 drop table if exists staging_posts cascade;
 
 create table staging_posts (
@@ -15,7 +17,9 @@ create table staging_posts (
     is_published boolean not null default false,
     post_hash varchar(64) not null
 );
-
+--
+-- feed_definitions table
+--
 drop table if exists feed_definitions cascade;
 
 create table feed_definitions (
@@ -26,3 +30,77 @@ create table feed_definitions (
     feed_generator varchar(512) not null,
     transport_ident varchar(256) not null,
 );
+--
+-- roles table
+--
+drop table if exists roles cascade;
+
+create table roles
+(
+  id serial,
+  name varchar(256) unique not null,
+
+  primary key(name)
+);
+--
+-- features_in_roles table
+--
+drop table if exists features_in_roles cascade;
+
+create table features_in_roles
+(
+  id serial,
+  feature_cd varchar(100) not null,
+  role varchar(100) not null,
+
+  primary key(id)
+);
+
+alter table features_in_roles add constraint features_in_roles_fk_2 foreign key (role) references roles (name);
+--
+-- users table
+--
+drop table if exists users cascade;
+
+create table users
+(
+  id serial,
+  name varchar(100) unique not null,
+  password varchar(256) not null,
+  email_address varchar(512),
+  auth_claim varchar(256),
+  verification_claim varchar(256),
+
+  primary key (name)
+);
+--
+-- users_in_roles table
+--
+drop table if exists users_in_roles cascade;
+
+create table users_in_roles
+(
+  id serial,
+  username varchar(100) not null,
+  role varchar(100) not null,
+
+  primary key (id)
+);
+
+alter table users_in_roles add constraint users_in_roles_fk_1 foreign key (username) references users (name);
+alter table users_in_roles add constraint users_in_roles_fk_2 foreign key (role) references roles (name);
+--
+-- framework_config table
+--
+drop table if exists framework_config cascade;
+
+create table framework_config
+(
+  username varchar(100) not null,
+  settings_group varchar(256) not null,
+  attr_name varchar(256) not null,
+  attr_value varchar(4000) not null,
+  unique(username, settings_group, attr_name)
+);
+
+alter table framework_config add constraint framework_config_fk_1 foreign key (username) references users (name);
