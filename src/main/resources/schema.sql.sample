@@ -28,7 +28,7 @@ create table feed_definitions (
     feed_title varchar(512) not null,
     feed_desc varchar(1024) not null,
     feed_generator varchar(512) not null,
-    transport_ident varchar(256) not null,
+    transport_ident varchar(256) not null
 );
 --
 -- roles table
