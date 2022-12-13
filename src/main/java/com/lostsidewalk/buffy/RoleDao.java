@@ -1,6 +1,5 @@
 package com.lostsidewalk.buffy;
 
-import com.google.common.collect.Lists;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -9,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static java.sql.Types.VARCHAR;
 
 @Component
@@ -41,7 +41,7 @@ public class RoleDao extends AbstractDao<Role> {
     //
     //
 
-    private static final List<String> INSERT_ATTRIBUTES = Lists.newArrayList("name");
+    private static final List<String> INSERT_ATTRIBUTES = newArrayList("name");
 
     @Override
     protected List<String> getInsertAttributes() {
@@ -82,6 +82,7 @@ public class RoleDao extends AbstractDao<Role> {
         return ROLE_ROW_MAPPER;
     }
 
+    @SuppressWarnings("unused")
     public List<Role> findByUsername(String username) {
         if (username != null) {
             return getJdbcTemplate().query(this.findByUsernameSQL, getRowMapper(), username);

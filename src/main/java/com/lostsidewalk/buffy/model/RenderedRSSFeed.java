@@ -19,22 +19,27 @@ public class RenderedRSSFeed implements Serializable {
         this.channel = channel;
     }
 
+    @SuppressWarnings("unused")
     public static RenderedRSSFeed from(String transportIdent, Channel channel) {
         return new RenderedRSSFeed(transportIdent, channel);
     }
 
+    @SuppressWarnings("unused")
     public String getTransportIdent() {
         return transportIdent;
     }
 
-    public void setTransportIdent(String transportIdent) {
+    @SuppressWarnings("unused")
+   public void setTransportIdent(String transportIdent) {
         this.transportIdent = transportIdent;
     }
 
+    @SuppressWarnings("unused")
     public Channel getChannel() {
         return channel;
     }
 
+    @SuppressWarnings("unused")
     public void setChannel(Channel channel) {
         this.channel = channel;
     }

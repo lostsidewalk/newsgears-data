@@ -6,8 +6,11 @@ plugins {
 apply plugin: 'java'
 apply plugin: 'java-library'
 
-sourceCompatibility = "11"
-targetCompatibility = "11"
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(19)
+    }
+}
 
 repositories {
     mavenCentral()
@@ -16,38 +19,39 @@ repositories {
 }
 
 dependencies {
-    api 'com.lostsidewalk.newsgears:newsgears-model:0.1-dev1'
+    api 'com.lostsidewalk.newsgears:newsgears-model:0.2'
 
     // SLF4J
-    implementation 'org.slf4j:slf4j-api:2.0.0'
-    implementation 'org.slf4j:slf4j-simple:2.0.0'
+    implementation 'org.slf4j:slf4j-api:2.0.5'
 
     // spring-boot-starter-data-jpa
-    api 'org.springframework.boot:spring-boot-starter-data-jpa:2.7.3'
+    api 'org.springframework.boot:spring-boot-starter-data-jpa:3.0.0'
     // spring-boot-starter-data-redis
-    api 'org.springframework.boot:spring-boot-starter-data-redis:2.7.3'
+    api 'org.springframework.boot:spring-boot-starter-data-redis:3.0.0'
     // commons-pool2
     api 'org.apache.commons:commons-pool2:2.11.1'
     // jedis
-    api 'redis.clients:jedis:3.9.0' // do not upgrade until spring-2 properly supports jedis-4
+    api 'redis.clients:jedis:4.3.1'
     // ROAM RSS/Atom
     api 'com.rometools:rome:1.18.0'
+    // json
+    api 'org.json:json:20220924'
 
     // gson
-    implementation 'com.google.code.gson:gson:2.9.0'
+    implementation 'com.google.code.gson:gson:2.10'
     // commons-lang
     implementation 'org.apache.commons:commons-lang3:3.12.0'
     // commons-collections4
     implementation 'org.apache.commons:commons-collections4:4.4'
     // postgresql driver
-    implementation 'org.postgresql:postgresql:42.5.0'
+    implementation 'org.postgresql:postgresql:42.5.1'
     // guava
     implementation 'com.google.guava:guava:31.1-jre'
 
     // lombok
     compileOnly 'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
-    testCompileOnly 'org.projectlombok:lombok:1.18.22'
+    testCompileOnly 'org.projectlombok:lombok:1.18.24'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.22'
 }
 
@@ -56,7 +60,7 @@ publishing {
         maven(MavenPublication) {
             groupId = 'com.lostsidewalk.newsgears'
             artifactId = 'newsgears-data'
-            version = '0.1-dev1'
+            version = '0.2'
 
             from components.java
         }

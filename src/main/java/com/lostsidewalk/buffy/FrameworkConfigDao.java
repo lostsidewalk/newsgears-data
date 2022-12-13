@@ -3,20 +3,21 @@ package com.lostsidewalk.buffy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
-import static com.lostsidewalk.buffy.FrameworkConfig.FEED_CONFIG;
-import static java.sql.Statement.NO_GENERATED_KEYS;
-import static java.sql.Types.VARCHAR;
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
-import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCauseMessage;
+import static com.lostsidewalk.buffy.FrameworkConfig.NOTIFICATION_CONFIG;
+import static java.util.Arrays.stream;
+import static java.util.Collections.singleton;
+import static java.util.stream.Collectors.toList;
 
 @Component
 @Slf4j
@@ -25,77 +26,56 @@ public class FrameworkConfigDao {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    static class Setting {
-        final String username;
-        final String settingsGroup;
-        final String attrName;
-        final String attrValue;
+    private static final String SELECT_BY_USER_ID_SQL = "select settings_group,attr_name,attr_value from framework_config where user_id = ?";
 
-        Setting(String username, String settingsGroup, String attrName, String attrValue) {
-            this.username = username;
-            this.settingsGroup = settingsGroup;
-            this.attrName = attrName;
-            this.attrValue = attrValue;
-        }
-    }
+    private static final String DELETE_SETTINGS_GROUP_BY_USER_ID_SQL = "delete from framework_config where user_id = ? and settings_group = ?";
 
-    private static final String SELECT_SQL = "select username,settings_group,attr_name,attr_value from framework_config where username = ?";
+    private static final String INSERT_SQL = "insert into framework_config (user_id, settings_group, attr_name, attr_value) values (?,?,?,?)";
 
-    private static final String DELETE_SQL = "delete from framework_config where username = ?";
-
-    private static final String UPSERT_SQL = "insert into framework_config (username, settings_group, attr_name, attr_value) " +
-            "values (:username, :settingsGroup, :attrName, :attrValue) " +
-            "on conflict " +
-            "on constraint framework_config_username_settings_group_attr_name_key " +
-            "do update set attr_value = :attrValue";
-
-    private static final String INSERT_SQL = "insert into framework_config (username, settings_group, attr_name, attr_value) " +
-            "values (:username, :settingsGroup, :attrName, :attrValue) ";
-
-    public final FrameworkConfig findByUsername(String username) {
-        //
-        FrameworkConfig frameworkConfig = new FrameworkConfig();
-        frameworkConfig.setUsername(username);
-        //
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-        DataSource dataSource = jdbcTemplate.getDataSource();
-        if (dataSource != null) {
-            Connection conn = null;
-            try {
-                conn = dataSource.getConnection();
-                ps = conn.prepareStatement(SELECT_SQL);
-                ps.setString(1, username);
-                rs = ps.executeQuery();
-                Map<String, String> feedConfig = new HashMap<>();
-                while (rs.next()) {
-                    String _settingsGroup = rs.getString("settings_group");
-                    String _attrName = rs.getString("attr_name");
-                    String _attrValue = rs.getString("attr_value");
-                    Map<String, String> m = null;
-                    switch (_settingsGroup) {
-                        case FEED_CONFIG: {
-                            m = feedConfig;
-                            break;
+    @SuppressWarnings("unused")
+    public final FrameworkConfig findByUserId(Long userId) throws DataAccessException {
+        try {
+            //
+            FrameworkConfig frameworkConfig = new FrameworkConfig();
+            frameworkConfig.setUserId(userId);
+            //
+            PreparedStatement ps = null;
+            ResultSet rs = null;
+            DataSource dataSource = jdbcTemplate.getDataSource();
+            if (dataSource != null) {
+                Connection conn = null;
+                try {
+                    conn = dataSource.getConnection();
+                    ps = conn.prepareStatement(SELECT_BY_USER_ID_SQL);
+                    ps.setLong(1, userId);
+                    rs = ps.executeQuery();
+                    Map<String, String> notificationConfig = new HashMap<>();
+                    while (rs.next()) {
+                        String _settingsGroup = rs.getString("settings_group");
+                        String _attrName = rs.getString("attr_name");
+                        String _attrValue = rs.getString("attr_value");
+                        Map<String, String> m = null;
+                        //noinspection SwitchStatementWithTooFewBranches
+                        switch (_settingsGroup) {
+                            case NOTIFICATION_CONFIG -> m = notificationConfig;
+                        }
+                        if (m != null) {
+                            m.put(_attrName, _attrValue);
                         }
                     }
-                    if (m != null) {
-                        m.put(_attrName, _attrValue);
-                    }
+                    frameworkConfig.setNotifications(notificationConfig);
+                } finally {
+                    closeQuietly(ps);
+                    closeQuietly(rs);
+                    closeQuietly(conn);
                 }
-                frameworkConfig.setFeed(feedConfig);
-            } catch (SQLException e) {
-                log.error(getRootCauseMessage(e), e);
-                throw new RuntimeException(e);
-                // TODO: do something here
-            } finally {
-                closeQuietly(ps);
-                closeQuietly(rs);
-                closeQuietly(conn);
             }
-        }
 
-        return frameworkConfig;
+            return frameworkConfig;
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "findByUserId", e.getMessage(), userId);
+        }
     }
 
     private static void closeQuietly(Connection conn) {
@@ -125,79 +105,37 @@ public class FrameworkConfigDao {
         } catch (SQLException ignored) {}
     }
 
-    public final void upsert(FrameworkConfig frameworkConfig) {
-        @SuppressWarnings("unused") int rowsAffected = 0;
-
-        String username = frameworkConfig.getUsername();
-        rowsAffected += clearAllSettings(username);
-        //noinspection UnusedAssignment
-        // TODO: log rows affected or refactor it away
-        rowsAffected += doSettingsGroup(username, FEED_CONFIG, frameworkConfig.getFeed(), this::execUpsert);
-    }
-
-    private int clearAllSettings(String username) {
-        return jdbcTemplate.update(DELETE_SQL, username);
-    }
-
-    private int doSettingsGroup(String username, String settingsGroup, Map<String, String> attributes, Function<MapSqlParameterSource, Integer> cons) {
-        int rowsAffected = 0;
-        for (Map.Entry<String, String> setting : attributes.entrySet()) {
-            String attrName = setting.getKey();
-            String attrValue = setting.getValue();
-            MapSqlParameterSource parameters = new MapSqlParameterSource();
-            configureParams(parameters, username, settingsGroup, attrName, attrValue);
-            rowsAffected += cons.apply(parameters);
+    @SuppressWarnings("unused")
+    public final void save(FrameworkConfig frameworkConfig) throws DataAccessException, DataUpdateException {
+        int rowsAffected;
+        try {
+            Long userId = frameworkConfig.getUserId();
+            // insert the notification config; remove entries w/null values first
+            rowsAffected = doSettingsGroup(userId, NOTIFICATION_CONFIG, cleanSettingsGroup(frameworkConfig.getNotifications()));
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "save", e.getMessage(), frameworkConfig);
         }
-
-        return rowsAffected;
-    }
-
-    private void configureParams(MapSqlParameterSource parameters, String username, String settingsGroup, String attrName, String attrValue) {
-        parameters.addValue("username", username, VARCHAR);
-        parameters.addValue("attrValue", attrValue, VARCHAR);
-        parameters.addValue("settingsGroup", settingsGroup, VARCHAR);
-        parameters.addValue("attrName", attrName, VARCHAR);
-    }
-
-    private int execUpsert(MapSqlParameterSource parameters) {
-        return exec(parameters, UPSERT_SQL);
-    }
-
-    private int execInsert(MapSqlParameterSource parameters) {
-        return exec(parameters, INSERT_SQL);
-    }
-
-    private int exec(MapSqlParameterSource parameters, String sql) {
-        DataSource dataSource = jdbcTemplate.getDataSource();
-        if (dataSource != null) {
-            NamedParameterStatement ps = null;
-            try (Connection conn = dataSource.getConnection()) {
-                ps = new NamedParameterStatement(conn, sql, NO_GENERATED_KEYS);
-                for (String p : parameters.getParameterNames()) {
-                    Object v = parameters.getValue(p);
-                    ps.setObject(p, v, parameters.getSqlType(p));
-                }
-                return ps.executeUpdate();
-            } catch (SQLException e) {
-                log.error(getRootCauseMessage(e), e); // TODO: throw something here
-            } finally {
-                if (ps != null) {
-                    try {
-                        ps.close();
-                    } catch (Exception ignored) {}
-                }
-            }
+        if (!(rowsAffected > 0)) {
+            throw new DataUpdateException(getClass().getSimpleName(), "save", frameworkConfig);
         }
-
-        return 0;
     }
 
-    private static final String DELETE_BY_USERNAME_SQL = "delete from framework_config where username = ?";
+    private Map<String, String> cleanSettingsGroup(Map<String, String> settingsGroup) {
+        settingsGroup.values().removeAll(singleton(null));
+        return settingsGroup;
+    }
 
-    public void deleteByUsername(String username) {
-        if (isNotBlank(username)) {
-            Object[] args = new Object[] {username};
-            this.jdbcTemplate.update(DELETE_BY_USERNAME_SQL, args);
-        }
+    private int doSettingsGroup(Long userId, @SuppressWarnings("SameParameterValue") String settingsGroup, Map<String, String> attributes) {
+        // drop the existing user settings
+        clearSettingsGroup(userId, settingsGroup);
+        List<Object[]> batchArgs = attributes.entrySet().stream().map(e -> new Object[] {
+            userId, settingsGroup, e.getKey(), e.getValue()
+        }).collect(toList());
+        return stream(this.jdbcTemplate.batchUpdate(INSERT_SQL, batchArgs)).sum();
+    }
+
+    private void clearSettingsGroup(Long userId, String settingsGroup) {
+        jdbcTemplate.update(DELETE_SETTINGS_GROUP_BY_USER_ID_SQL, userId, settingsGroup);
     }
 }

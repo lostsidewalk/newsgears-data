@@ -1,5 +1,6 @@
 package com.lostsidewalk.buffy;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+@Slf4j
 @Component
 public class FeatureDao {
 
@@ -15,10 +17,16 @@ public class FeatureDao {
 
     private final RowMapper<String> mapper = (rs, rowNum) -> rs.getString("feature_cd");
 
-    public List<String> findByRolename(String rolename) {
+    @SuppressWarnings("unused")
+    public List<String> findByRolename(String rolename) throws DataAccessException {
         String findByRoleNameSql = "select feature_cd from features_in_roles fir "
                 + " join roles r on r.name = fir.role "
                 + " where r.name = ?";
-        return jdbcTemplate.query(findByRoleNameSql, mapper, rolename);
+        try {
+            return jdbcTemplate.query(findByRoleNameSql, mapper, rolename);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "findByRoleName", e.getMessage(), rolename);
+        }
     }
 }
