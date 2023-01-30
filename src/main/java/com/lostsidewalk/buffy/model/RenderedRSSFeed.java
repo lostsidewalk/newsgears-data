@@ -5,7 +5,7 @@ import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serializable;
 
-@RedisHash("rssFeed")
+@RedisHash(value = "rssFeed")
 public class RenderedRSSFeed implements Serializable {
 
     public static final long serialVersionUID = 5882300L;

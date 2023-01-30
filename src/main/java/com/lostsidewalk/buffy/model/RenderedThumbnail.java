@@ -4,8 +4,8 @@ import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serializable;
 
-@RedisHash("atomFeed")
-public class Thumbnail implements Serializable {
+@RedisHash(value = "thumbnail", timeToLive = 60 * 60 * 48) // TTL = 48h
+public class RenderedThumbnail implements Serializable {
 
     public static final long serialVersionUID = 1842305L;
 
@@ -13,14 +13,14 @@ public class Thumbnail implements Serializable {
 
     byte[] image;
 
-    private Thumbnail(String transportIdent, byte[] image) {
+    private RenderedThumbnail(String transportIdent, byte[] image) {
         this.transportIdent = transportIdent;
         this.image = image;
     }
 
     @SuppressWarnings("unused")
-    public static Thumbnail from(String transportIdent, byte[] image) {
-        return new Thumbnail(transportIdent, image);
+    public static RenderedThumbnail from(String transportIdent, byte[] image) {
+        return new RenderedThumbnail(transportIdent, image);
     }
 
     @SuppressWarnings("unused")

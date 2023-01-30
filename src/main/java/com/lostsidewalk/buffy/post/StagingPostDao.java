@@ -1,8 +1,11 @@
 package com.lostsidewalk.buffy.post;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.DataUpdateException;
-import com.lostsidewalk.buffy.post.StagingPost.PostStatus;
+import com.lostsidewalk.buffy.post.StagingPost.PostPubStatus;
+import com.lostsidewalk.buffy.post.StagingPost.PostReadStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.postgresql.util.PGobject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +15,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
 
+import java.lang.reflect.Type;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.PreparedStatement;
@@ -23,14 +27,28 @@ import java.util.*;
 
 import static com.lostsidewalk.buffy.post.StagingPost.computeThumbnailHash;
 import static java.util.Arrays.stream;
+import static java.util.Collections.emptyList;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
-import static org.apache.commons.lang3.StringUtils.*;
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 @Slf4j
 @Component
 public class StagingPostDao {
+
+    private static final Gson GSON = new Gson();
+
+    private static final Type LIST_POST_URL_TYPE = new TypeToken<List<PostUrl>>() {}.getType();
+
+    private static final Type LIST_POST_PERSON_TYPE = new TypeToken<List<PostPerson>>() {}.getType();
+
+    private static final Type LIST_POST_ENCLOSURE_TYPE = new TypeToken<List<PostEnclosure>>() {}.getType();
+
+    private static final Type LIST_CONTENT_OBJECT_TYPE = new TypeToken<List<ContentObject>>() {}.getType();
+
+    private static final Type LIST_STRING_TYPE = new TypeToken<List<String>>() {}.getType();
 
     @Autowired
     JdbcTemplate jdbcTemplate;
@@ -53,29 +71,63 @@ public class StagingPostDao {
                     "post_hash," +
                     "post_title," +
                     "post_desc," +
+                    "post_contents," +
+                    "post_media," +
+                    "post_itunes," +
                     "post_url," +
+                    "post_urls," +
                     "post_img_url," +
                     "post_img_transport_ident," +
                     "importer_id," +
-                    "feed_ident," +
+                    "importer_desc," +
+                    "feed_id," +
                     "object_source," +
+                    "source_name," +
+                    "source_url," +
                     "import_timestamp," +
-                    "post_status," +
+                    "post_read_status," +
+                    "post_pub_status," +
                     "username," +
                     "post_comment," +
                     "post_rights," +
-                    "xml_base," +
-                    "contributor_name," +
-                    "contributor_email," +
-                    "author_name," +
-                    "author_email," +
-                    "post_category," +
+                    "contributors," +
+                    "authors," +
+                    "post_categories," +
                     "publish_timestamp," +
                     "expiration_timestamp," +
-                    "enclosure_url," +
+                    "enclosures," +
                     "last_updated_timestamp" +
-                    ") values " +
-                    "(?,?,?,?,?,?,?,?,cast(? as json),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                    ") values (" +
+                    "?," + // post_hash
+                    "cast(? as json)," + // post_title
+                    "cast(? as json)," + // post_desc
+                    "cast(? as json)," + // post_contents
+                    "cast(? as json)," + // post_media
+                    "cast(? as json)," + // post_itunes
+                    "?," + // post_url
+                    "cast(? as json)," + // post_urls
+                    "?," + // post_img_url
+                    "?," + // post_img_transport_ident
+                    "?," + // importer_id
+                    "?," + // importer_desc
+                    "?," + // feed_id
+                    "cast(? as json)," + // object_source
+                    "?," + // source_name
+                    "?," + // source_url
+                    "?," + // import_timestamp
+                    "?," + // post_read_status
+                    "?," + // post_pub_status
+                    "?," + // username
+                    "?," + // post_comment
+                    "?," + // post_rights
+                    "cast(? as json)," + // contributors
+                    "cast(? as json)," + // authors
+                    "cast(? as json)," + // post_categories
+                    "?," + // publish_timestamp
+                    "?," + // expiration_timestamp
+                    "cast(? as json)," + // enclosures
+                    "?" + // last_updated_timestamp
+                ")";
 
     private static final ZoneId ZONE_ID = ZoneId.systemDefault();
 
@@ -92,33 +144,37 @@ public class StagingPostDao {
                     conn -> {
                         PreparedStatement ps = conn.prepareStatement(INSERT_STAGING_POST_SQL, new String[] { "id" });
                         ps.setString(1, stagingPost.getPostHash());
-                        ps.setString(2, stagingPost.getPostTitle());
-                        ps.setString(3, stagingPost.getPostDesc());
-                        ps.setString(4, stagingPost.getPostUrl());
-                        ps.setString(5, stagingPost.getPostImgUrl());
-                        ps.setString(6, stagingPost.getPostImgTransportIdent());
-                        ps.setString(7, stagingPost.getImporterId());
-                        ps.setString(8, stagingPost.getFeedIdent());
-                        ps.setString(9, stagingPost.getSourceObj().toString());
-                        ps.setTimestamp(10, toTimestamp(stagingPost.getImportTimestamp()));
-                        ps.setString(11, ofNullable(stagingPost.getPostStatus()).map(Enum::name).orElse(null));
-                        ps.setString(12, stagingPost.getUsername());
-                        ps.setString(13, stagingPost.getPostComment());
-                        ps.setString(14, stagingPost.getPostRights());
-                        ps.setString(15, stagingPost.getXmlBase());
-                        ps.setString(16, stagingPost.getContributorName());
-                        ps.setString(17, stagingPost.getContributorEmail());
-                        ps.setString(18, stagingPost.getAuthorName());
-                        ps.setString(19, stagingPost.getAuthorEmail());
-                        ps.setString(20, stagingPost.getPostCategory());
-                        ps.setTimestamp(21, toTimestamp(stagingPost.getPublishTimestamp()));
-                        ps.setTimestamp(22, toTimestamp(stagingPost.getExpirationTimestamp()));
-                        ps.setString(23, stagingPost.getEnclosureUrl());
-                        ps.setTimestamp(24, toTimestamp(stagingPost.getLastUpdatedTimestamp()));
+                        ps.setString(2, GSON.toJson(stagingPost.getPostTitle()));
+                        ps.setString(3, GSON.toJson(stagingPost.getPostDesc()));
+                        ps.setString(4, ofNullable(stagingPost.getPostContents()).map(GSON::toJson).orElse(null));
+                        ps.setString(5, ofNullable(stagingPost.getPostMedia()).map(GSON::toJson).orElse(null));
+                        ps.setString(6, ofNullable(stagingPost.getPostITunes()).map(GSON::toJson).orElse(null));
+                        ps.setString(7, stagingPost.getPostUrl()); // nn
+                        ps.setString(8, ofNullable(stagingPost.getPostUrls()).map(GSON::toJson).orElse(null));
+                        ps.setString(9, stagingPost.getPostImgUrl());
+                        ps.setString(10, stagingPost.getPostImgTransportIdent());
+                        ps.setString(11, stagingPost.getImporterId()); // nn
+                        ps.setString(12, stagingPost.getImporterDesc());
+                        ps.setLong(13, stagingPost.getFeedId()); // nn
+                        ps.setString(14, stagingPost.getSourceObj().toString()); // nn
+                        ps.setString(15, stagingPost.getSourceName());
+                        ps.setString(16, stagingPost.getSourceUrl());
+                        ps.setTimestamp(17, toTimestamp(stagingPost.getImportTimestamp()));
+                        ps.setString(18, ofNullable(stagingPost.getPostReadStatus()).map(Enum::name).orElse(null));
+                        ps.setString(19, ofNullable(stagingPost.getPostPubStatus()).map(Enum::name).orElse(null));
+                        ps.setString(20, stagingPost.getUsername());
+                        ps.setString(21, stagingPost.getPostComment());
+                        ps.setString(22, stagingPost.getPostRights());
+                        ps.setString(23, ofNullable(stagingPost.getContributors()).map(GSON::toJson).orElse(null));
+                        ps.setString(24, ofNullable(stagingPost.getAuthors()).map(GSON::toJson).orElse(null));
+                        ps.setString(25, ofNullable(stagingPost.getPostCategories()).map(GSON::toJson).orElse(null));
+                        ps.setTimestamp(26, toTimestamp(stagingPost.getPublishTimestamp()));
+                        ps.setTimestamp(27, toTimestamp(stagingPost.getExpirationTimestamp()));
+                        ps.setString(28, ofNullable(stagingPost.getEnclosures()).map(GSON::toJson).orElse(null));
+                        ps.setTimestamp(29, toTimestamp(stagingPost.getLastUpdatedTimestamp()));
 
                         return ps;
                     }, keyHolder);
-
             if (!(rowsUpdated > 0)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "add", stagingPost);
             }
@@ -131,113 +187,175 @@ public class StagingPostDao {
 
     private final RowMapper<StagingPost> STAGING_POST_ROW_MAPPER = (rs, rowNum) -> {
         Long id = rs.getLong("id");
-        String postTitle = rs.getString("post_title");
-        String postDesc = rs.getString("post_desc");
+        // post_title
+        ContentObject postTitle = null;
+        PGobject postTitleObj = ((PGobject) rs.getObject("post_title"));
+        if (postTitleObj != null) {
+            postTitle = GSON.fromJson(postTitleObj.getValue(), ContentObject.class);
+        }
+        // post_description
+        ContentObject postDesc = null;
+        PGobject postDescObj = ((PGobject) rs.getObject("post_desc"));
+        if (postDescObj != null) {
+            postDesc = GSON.fromJson(postDescObj.getValue(), ContentObject.class);
+        }
+        // post_contents
+        List<ContentObject> postContents = null;
+        PGobject postContentsObj = ((PGobject) rs.getObject("post_contents"));
+        if (postContentsObj != null) {
+            postContents = GSON.fromJson(postContentsObj.getValue(), LIST_CONTENT_OBJECT_TYPE);
+        }
+        // post_media
+        PostMedia postMedia = null;
+        PGobject postMediaObj = ((PGobject) rs.getObject("post_media"));
+        if (postMediaObj != null) {
+            postMedia = GSON.fromJson(postMediaObj.getValue(), PostMedia.class);
+        }
+        // post iTunes
+        PostITunes postITunes = null;
+        PGobject postITunesObj = ((PGobject) rs.getObject("post_itunes"));
+        if (postITunesObj != null) {
+            postITunes = GSON.fromJson(postITunesObj.getValue(), PostITunes.class);
+        }
+        // post_url
         String postUrl = rs.getString("post_url");
+        // post_urls
+        List<PostUrl> postUrls = null;
+        PGobject postUrlsObj = ((PGobject) rs.getObject("post_urls"));
+        if (postUrlsObj != null) {
+            postUrls = GSON.fromJson(postUrlsObj.getValue(), LIST_POST_URL_TYPE);
+        }
         String postImgUrl = rs.getString("post_img_url");
         String postImgTransportIdent = rs.getString("post_img_transport_ident");
         String importerId = rs.getString("importer_id");
-        String feedIdent = rs.getString("feed_ident");
+        String importerDesc = rs.getString("importer_desc");
+        Long feedId = rs.getLong("feed_id");
         String sourceObj = ((PGobject) rs.getObject("object_source")).getValue();
-        String sourceName = "";
-        String sourceUrl = "";
+        String sourceName = rs.getString("source_name");
+        String sourceUrl = rs.getString("source_url");
         Timestamp importTimestamp = rs.getTimestamp("import_timestamp");
-        String postStatus = rs.getString("post_status");
+        String postReadStatus = rs.getString("post_read_status");
+        String postPubStatus = rs.getString("post_pub_status");
         String postHash = rs.getString("post_hash");
         String username = rs.getString("username");
         String postComment = rs.getString("post_comment");
         String postRights = rs.getString("post_rights");
-        String xmlBase = rs.getString("xml_base");
-        String contributorName = rs.getString("contributor_name");
-        String contributorEmail = rs.getString("contributor_email");
-        String authorName = rs.getString("author_name");
-        String authorEmail = rs.getString("author_email");
-        String postCategory = rs.getString("post_category");
+        // contributors
+        List<PostPerson> contributors = null;
+        PGobject contributorsObj = ((PGobject) rs.getObject("contributors"));
+        if (contributorsObj != null) {
+            contributors = GSON.fromJson(contributorsObj.getValue(), LIST_POST_PERSON_TYPE);
+        }
+        // authors
+        List<PostPerson> authors = null;
+        PGobject authorsObj = ((PGobject) rs.getObject("authors"));
+        if (authorsObj != null) {
+            authors = GSON.fromJson(authorsObj.getValue(), LIST_POST_PERSON_TYPE);
+        }
+        // post_categories
+        List<String> postCategories = null;
+        PGobject postCategoriesObj = ((PGobject) rs.getObject("post_categories"));
+        if (postCategoriesObj != null) {
+            postCategories = GSON.fromJson(postCategoriesObj.getValue(), LIST_STRING_TYPE);
+        }
         Timestamp publishTimestamp = rs.getTimestamp("publish_timestamp");
         Timestamp expirationTimestamp = rs.getTimestamp("expiration_timestamp");
-        String enclosureUrl = rs.getString("enclosure_url");
+        // enclosures
+        List<PostEnclosure> enclosures = null;
+        PGobject enclosuresObj = ((PGobject) rs.getObject("enclosures"));
+        if (enclosuresObj != null) {
+            enclosures = GSON.fromJson(enclosuresObj.getValue(), LIST_POST_ENCLOSURE_TYPE);
+        }
         Timestamp lastUpdatedTimestamp = rs.getTimestamp("last_updated_timestamp");
         boolean isPublished = rs.getBoolean("is_published");
 
         StagingPost p = StagingPost.from(
                 importerId,
-                feedIdent,
-                importerId,
+                feedId,
+                importerDesc,
                 sourceObj,
                 sourceName,
                 sourceUrl,
                 postTitle,
                 postDesc,
+                postContents,
+                postMedia,
+                postITunes,
                 postUrl,
+                postUrls,
                 postImgUrl,
                 postImgTransportIdent,
                 importTimestamp,
                 postHash,
                 username,
                 postComment,
-                isPublished,
                 postRights,
-                xmlBase,
-                contributorName,
-                contributorEmail,
-                authorName,
-                authorEmail,
-                postCategory,
+                contributors,
+                authors,
+                postCategories,
                 publishTimestamp,
                 expirationTimestamp,
-                enclosureUrl,
+                enclosures,
                 lastUpdatedTimestamp
         );
         p.setId(id);
-        if (postStatus != null) {
+        if (postReadStatus != null) {
             try {
-                p.setPostStatus(PostStatus.valueOf(postStatus));
+                p.setPostReadStatus(PostReadStatus.valueOf(postReadStatus));
             } catch (Exception e) {
-                log.error("Unknown post status for postId={}, status={}", p.getId(), postStatus);
+                log.error("Unknown post-read status for postId={}, status={}", p.getId(), postReadStatus);
             }
         }
+        if (postPubStatus != null) {
+            try {
+                p.setPostPubStatus(PostPubStatus.valueOf(postPubStatus));
+            } catch (Exception e) {
+                log.error("Unknown post-pub status for postId={}, status={}", p.getId(), postPubStatus);
+            }
+        }
+        p.setPublished(isPublished);
 
         return p;
     };
 
-//    private static final String FIND_PUB_PENDING_SQL = "select * from staging_posts where post_status = 'PUB_PENDING'";
+//    private static final String FIND_PUB_PENDING_SQL = "select * from staging_posts where post_pub_status = 'PUB_PENDING'";
 
     private static final String FIND_PUB_PENDING_BY_FEED_SQL =
             "select * from staging_posts s " +
-            "join feed_definitions f on f.feed_ident = s.feed_ident " +
-            "where f.is_active = true and f.username = ? " +
-            "and s.post_status = 'PUB_PENDING' " +
-            "and s.feed_ident = ?";
+            "join feed_definitions f on f.id = s.feed_id " +
+            "where f.feed_status = 'ENABLED' and f.username = ? " +
+            "and s.post_pub_status = 'PUB_PENDING' " +
+            "and s.feed_id = ?";
 
     @SuppressWarnings("unused")
-    public List<StagingPost> getPubPending(String username, String feedIdent) throws DataAccessException {
-        if (isNoneBlank(username, feedIdent)) {
+    public List<StagingPost> getPubPending(String username, Long feedId) throws DataAccessException {
+        if (isNotBlank(username) && feedId != null) {
             try {
-                return jdbcTemplate.query(FIND_PUB_PENDING_BY_FEED_SQL, new Object[]{username, feedIdent}, STAGING_POST_ROW_MAPPER);
+                return jdbcTemplate.query(FIND_PUB_PENDING_BY_FEED_SQL, new Object[]{username, feedId}, STAGING_POST_ROW_MAPPER);
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
-                throw new DataAccessException(getClass().getSimpleName(), "getPubPending", e.getMessage(), username, feedIdent);
+                throw new DataAccessException(getClass().getSimpleName(), "getPubPending", e.getMessage(), username, feedId);
             }
         }
 
-        return Collections.emptyList(); // jdbcTemplate.query(FIND_PUB_PENDING_SQL, STAGING_POST_ROW_MAPPER);
+        return emptyList(); // jdbcTemplate.query(FIND_PUB_PENDING_SQL, STAGING_POST_ROW_MAPPER);
     }
 
     private static final String FIND_DEPUB_PENDING_BY_FEED_SQL =
             "select * from staging_posts s " +
-                    "join feed_definitions f on f.feed_ident = s.feed_ident " +
-                    "where f.is_active = true and f.username = ? " +
-                    "and s.post_status = 'DEPUB_PENDING' " +
-                    "and s.feed_ident = ? and s.username = ?";
+                    "join feed_definitions f on f.id = s.feed_id " +
+                    "where f.feed_status = 'ENABLED' and f.username = ? " +
+                    "and s.post_pub_status = 'DEPUB_PENDING' " +
+                    "and s.feed_id = ?";
 
     @SuppressWarnings("unused")
-    public List<StagingPost> getDepubPending(String username, String feedIdent) throws DataAccessException {
-        if (isNotBlank(feedIdent)) {
+    public List<StagingPost> getDepubPending(String username, Long feedId) throws DataAccessException {
+        if (isNotBlank(username) && feedId != null) {
             try {
-                return jdbcTemplate.query(FIND_DEPUB_PENDING_BY_FEED_SQL, new Object[] { username, feedIdent, username }, STAGING_POST_ROW_MAPPER);
+                return jdbcTemplate.query(FIND_DEPUB_PENDING_BY_FEED_SQL, new Object[] { username, feedId }, STAGING_POST_ROW_MAPPER);
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
-                throw new DataAccessException(getClass().getSimpleName(), "getDepubPending", e.getMessage(), username, feedIdent);
+                throw new DataAccessException(getClass().getSimpleName(), "getDepubPending", e.getMessage(), username, feedId);
             }
         }
 
@@ -277,6 +395,19 @@ public class StagingPostDao {
         return rowsUpdated;
     }
 
+    private static final String FIND_FEED_ID_BY_STAGING_POST_ID =
+            "select feed_id from staging_posts where id = ? and username = ?";
+
+    @SuppressWarnings("unused")
+    public Long findFeedIdByStagingPostId(String username, Long id) throws DataAccessException {
+        try {
+            return jdbcTemplate.queryForObject(FIND_FEED_ID_BY_STAGING_POST_ID, new Object[] { id, username }, Long.class);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "findFeedIdentByStagingPostId", e.getMessage(), username, id);
+        }
+    }
+
     private static final String FIND_ALL_SQL = "select * from staging_posts";
 
     @SuppressWarnings("unused")
@@ -301,10 +432,11 @@ public class StagingPostDao {
         }
     }
 
-    private static final String FIND_BY_USER_AND_FEED_ID_SQL_TEMPLATE = "select * from staging_posts s " +
-            "join feed_definitions f on f.feed_ident = s.feed_ident " +
-            "join users u on u.name = f.username " +
-            "where u.name = ? and f.id in (%s)";
+    private static final String FIND_BY_USER_AND_FEED_ID_SQL_TEMPLATE =
+            "select s.* from staging_posts s " +
+                "join feed_definitions f on f.id = s.feed_id " +
+                "join users u on u.name = f.username " +
+                "where u.name = ? and f.id in (%s)";
 
     @SuppressWarnings("unused")
     public List<StagingPost> findByUserAndFeedIds(String username, List<Long> feedIds) throws DataAccessException {
@@ -360,7 +492,10 @@ public class StagingPostDao {
         }
     }
 
-    private static final String FIND_ALL_IDLE_SQL_TEMPLATE = "select username,id from staging_posts where (post_status is null or post_status = 'IGNORED') and import_timestamp < current_timestamp - INTERVAL '%s DAYS'";
+    private static final String FIND_ALL_IDLE_SQL_TEMPLATE =
+            "select username,id from staging_posts where " +
+                    "(post_read_status is null or post_read_status = 'READ') and " + // post status check
+                    "import_timestamp < current_timestamp - INTERVAL '%s DAYS'"; // post age check
 
     @SuppressWarnings("unused")
     Map<String, List<Long>> findAllIdle(int maxAge) throws DataAccessException {
@@ -395,18 +530,19 @@ public class StagingPostDao {
         }
     }
 
-    private static final String FIND_PUBLISHED_BY_FEED_SQL = "select * from staging_posts " +
-            "where is_published = true " +
-            "and (post_status is null or post_status != 'DEPUB_PENDING') " +
-            "and feed_ident = ? and username = ?";
+    private static final String FIND_PUBLISHED_BY_FEED_SQL =
+            "select * from staging_posts " +
+                    "where is_published = true " +
+                    "and (post_pub_status is null or post_pub_status != 'DEPUB_PENDING') " +
+                    "and feed_id = ? and username = ?";
 
     @SuppressWarnings("unused")
-    public List<StagingPost> findPublishedByFeed(String username, String feedIdent) throws DataAccessException {
+    public List<StagingPost> findPublishedByFeed(String username, Long feedId) throws DataAccessException {
         try {
-            return jdbcTemplate.query(FIND_PUBLISHED_BY_FEED_SQL, new Object[] { feedIdent, username }, STAGING_POST_ROW_MAPPER);
+            return jdbcTemplate.query(FIND_PUBLISHED_BY_FEED_SQL, new Object[] { feedId, username }, STAGING_POST_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findPublishedByFeed", e.getMessage(), username, feedIdent);
+            throw new DataAccessException(getClass().getSimpleName(), "findPublishedByFeed", e.getMessage(), username, feedId);
         }
     }
 
@@ -435,7 +571,7 @@ public class StagingPostDao {
         }
     }
 
-    private static final String MARK_PUB_COMPLETE_BY_ID_SQL = "update staging_posts set post_status = null, is_published = true where id = ? and username = ?";
+    private static final String MARK_PUB_COMPLETE_BY_ID_SQL = "update staging_posts set post_pub_status = null, is_published = true where id = ? and username = ?";
 
     @SuppressWarnings("unused")
     public void markPubComplete(String username, long id) throws DataAccessException, DataUpdateException {
@@ -451,7 +587,7 @@ public class StagingPostDao {
         }
     }
 
-    private static final String CLEAR_PUB_COMPLETE_BY_ID_SQL = "update staging_posts set post_status = null, is_published = false where id = ? and username = ?";
+    private static final String CLEAR_PUB_COMPLETE_BY_ID_SQL = "update staging_posts set post_pub_status = null, is_published = false where id = ? and username = ?";
 
     @SuppressWarnings("unused")
     public void clearPubComplete(String username, long id) throws DataAccessException, DataUpdateException {
@@ -467,126 +603,169 @@ public class StagingPostDao {
         }
     }
 
-    private static final String UPDATE_POST_STATUS_BY_ID = "update staging_posts set post_status = ? where id = ? and username = ?";
+    private static final String UPDATE_POST_READ_STATUS_BY_ID = "update staging_posts set post_read_status = ? where id = ? and username = ?";
 
     @SuppressWarnings("unused")
-    public void updatePostStatus(String username, long id, PostStatus postStatus) throws DataAccessException, DataUpdateException {
+    public void updatePostReadStatus(String username, long id, PostReadStatus postStatus) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(UPDATE_POST_STATUS_BY_ID, postStatus == null ? null : postStatus.toString(), id, username);
+            rowsUpdated = jdbcTemplate.update(UPDATE_POST_READ_STATUS_BY_ID, postStatus == null ? null : postStatus.toString(), id, username);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "updatePostStatus", e.getMessage(), username, id, postStatus);
+            throw new DataAccessException(getClass().getSimpleName(), "updatePostReadStatus", e.getMessage(), username, id, postStatus);
         }
         if (!(rowsUpdated > 0)) {
-            throw new DataUpdateException(getClass().getSimpleName(), "updatePostStatus", username, id, postStatus);
+            throw new DataUpdateException(getClass().getSimpleName(), "updatePostReadStatus", username, id, postStatus);
+        }
+    }
+
+    private static final String UPDATE_POST_PUB_STATUS_BY_ID = "update staging_posts set post_pub_status = ? where id = ? and username = ?";
+
+    @SuppressWarnings("unused")
+    public void updatePostPubStatus(String username, long id, PostPubStatus postStatus) throws DataAccessException, DataUpdateException {
+        int rowsUpdated;
+        try {
+            rowsUpdated = jdbcTemplate.update(UPDATE_POST_PUB_STATUS_BY_ID, postStatus == null ? null : postStatus.toString(), id, username);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "updatePostPubStatus", e.getMessage(), username, id, postStatus);
+        }
+        if (!(rowsUpdated > 0)) {
+            throw new DataUpdateException(getClass().getSimpleName(), "updatePostPubStatus", username, id, postStatus);
         }
     }
 
     private static final String UPDATE_POST_BY_ID_TEMPLATE = "update staging_posts set %s where id = ? and username = ?";
 
     @SuppressWarnings("unused")
-    public void updatePost(String username, long id, String sourceName, String sourceUrl, String postTitle, String postDesc,
-                          String postUrl, String postImgUrl, String postComment, String postRights, String xmlBase,
-                          String contributorName, String contributorEmail, String authorName, String authorEmail,
-                          String postCategory, Date expirationTimestamp, String enclosureUrl) throws DataAccessException, DataUpdateException {
+    public void updatePost(String username, long id, String sourceName, String sourceUrl, ContentObject postTitle, ContentObject postDesc,
+                           List<ContentObject> postContents, PostMedia postMedia, PostITunes postITunes, String postUrl,
+                           List<PostUrl> postUrls, String postImgUrl, String postComment, String postRights,
+                           List<PostPerson> contributors, List<PostPerson> authors, List<String> postCategories,
+                           Date expirationTimestamp, List<PostEnclosure> enclosures)
+            throws DataAccessException, DataUpdateException
+    {
+        // assemble update statement arguments
         List<Object> updateArgs = new ArrayList<>();
-        List<String> updateAttrs = new ArrayList<>();
-
+        //
+        // start with simple attributes
+        //
+        List<String> simpleUpdateAttrs = new ArrayList<>();
         if (sourceName != null) {
             updateArgs.add(sourceName);
-            updateAttrs.add("source_name");
+            simpleUpdateAttrs.add("source_name");
         }
         if (sourceUrl != null) {
             updateArgs.add(sourceUrl);
-            updateAttrs.add("source_url");
-        }
-        if (postTitle != null) {
-            updateArgs.add(postTitle);
-            updateAttrs.add("post_title");
-        }
-        if (postDesc != null) {
-            updateArgs.add(postDesc);
-            updateAttrs.add("post_desc");
+            simpleUpdateAttrs.add("source_url");
         }
         if (postUrl != null) {
             updateArgs.add(postUrl);
-            updateAttrs.add("post_url");
+            simpleUpdateAttrs.add("post_url");
         }
         if (postImgUrl != null) {
             //
             updateArgs.add(postImgUrl);
-            updateAttrs.add("post_img_url");
+            simpleUpdateAttrs.add("post_img_url");
             //
             try {
                 MessageDigest md = MessageDigest.getInstance("MD5");
                 updateArgs.add(computeThumbnailHash(md, postImgUrl));
-                updateAttrs.add("post_img_transport_ident");
+                simpleUpdateAttrs.add("post_img_transport_ident");
             } catch (NoSuchAlgorithmException ignored) {
                 // ignored
             }
         }
         if (postComment != null) {
             updateArgs.add(postComment);
-            updateAttrs.add("post_comment");
+            simpleUpdateAttrs.add("post_comment");
         }
         if (postRights != null) {
             updateArgs.add(postRights);
-            updateAttrs.add("post_rights");
-        }
-        // xml base
-        if (xmlBase != null) {
-            updateArgs.add(xmlBase);
-            updateAttrs.add("xml_base");
-        }
-        // contributor name
-        if (contributorName != null) {
-            updateArgs.add(contributorName);
-            updateAttrs.add("contributor_name");
-        }
-        // contributor email
-        if (contributorName != null) {
-            updateArgs.add(contributorEmail);
-            updateAttrs.add("contributor_email");
-        }
-        // author name
-        if (authorName != null) {
-            updateArgs.add(authorName);
-            updateAttrs.add("author_name");
-        }
-        // author email
-        if (authorEmail != null) {
-            updateArgs.add(authorEmail);
-            updateAttrs.add("author_email");
-        }
-        // post category
-        if (postCategory != null) {
-            updateArgs.add(postCategory);
-            updateAttrs.add("post_category");
+            simpleUpdateAttrs.add("post_rights");
         }
         // expiration timestamp
         if (expirationTimestamp != null) {
             updateArgs.add(expirationTimestamp);
-            updateAttrs.add("expiration_timestamp");
+            simpleUpdateAttrs.add("expiration_timestamp");
         }
         // last updated timestamp
         updateArgs.add(toTimestamp(new Date()));
-        updateAttrs.add("last_updated_timestamp");
+        simpleUpdateAttrs.add("last_updated_timestamp");
         // enclosure URL
         updateArgs.add(id);
         updateArgs.add(username);
-        String updateClause = updateAttrs.stream().map(a -> a + "=?").collect(joining(","));
+        //
+        // now JSON attributes
+        //
+        List<String> jsonUpdateAttrs = new ArrayList<>();
+        // post_title
+        if (postTitle != null) {
+            updateArgs.add(GSON.toJson(postTitle));
+            jsonUpdateAttrs.add("post_title");
+        }
+        // post_desc
+        if (postDesc != null) {
+            updateArgs.add(GSON.toJson(postDesc));
+            jsonUpdateAttrs.add("post_desc");
+        }
+        // post_contents
+        if (postContents != null) {
+            updateArgs.add(GSON.toJson(postContents));
+            jsonUpdateAttrs.add("post_contents");
+        }
+        // post_media
+        if (postMedia != null) {
+            updateArgs.add(GSON.toJson(postMedia));
+            jsonUpdateAttrs.add("post_media");
+        }
+        // post_itunes
+        if (postITunes != null) {
+            updateArgs.add(GSON.toJson(postITunes));
+            jsonUpdateAttrs.add("post_itunes");
+        }
+        // post_urls
+        if (postUrls != null) {
+            updateArgs.add(GSON.toJson(postUrls));
+            jsonUpdateAttrs.add("post_urls");
+        }
+        // post_categories
+        if (postCategories != null) {
+            updateArgs.add(GSON.toJson(postCategories));
+            jsonUpdateAttrs.add("post_categories");
+        }
+        // contributors
+        if (contributors != null) {
+            updateArgs.add(GSON.toJson(contributors));
+            jsonUpdateAttrs.add("contributors");
+        }
+        // authors
+        if (authors != null) {
+            updateArgs.add(GSON.toJson(authors));
+            jsonUpdateAttrs.add("authors");
+        }
+        // enclosures
+        if (enclosures != null) {
+            updateArgs.add(GSON.toJson(enclosures));
+            jsonUpdateAttrs.add("enclosures");
+        }
+        // assemble the final update statement
+        List<String> allUpdateAttrs = new ArrayList<>();
+        allUpdateAttrs.addAll(simpleUpdateAttrs.stream().map(a -> a + "=?").toList());
+        allUpdateAttrs.addAll(jsonUpdateAttrs.stream().map(j -> j + "=?::json").toList());
+        String updateClause = String.join(",", allUpdateAttrs);
         String updateSql = String.format(UPDATE_POST_BY_ID_TEMPLATE, updateClause);
-
+        // perform the update
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(updateSql, updateArgs.toArray());
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage());
-            throw new DataAccessException(getClass().getSimpleName(), "updatePost attrs=" + updateAttrs, e.getMessage(), updateArgs.toArray());
+            throw new DataAccessException(getClass().getSimpleName(), "updatePost attrs=" + simpleUpdateAttrs, e.getMessage(), updateArgs.toArray());
         }
+        // check the result
         if (!(rowsUpdated > 0)) {
-            throw new DataUpdateException(getClass().getSimpleName(), "updatePost attrs=" + updateAttrs, updateArgs.toArray());
+            throw new DataUpdateException(getClass().getSimpleName(), "updatePost attrs=" + simpleUpdateAttrs, updateArgs.toArray());
         }
     }
 }

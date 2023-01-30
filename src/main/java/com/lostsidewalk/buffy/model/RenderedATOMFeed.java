@@ -5,7 +5,7 @@ import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serializable;
 
-@RedisHash("atomFeed")
+@RedisHash(value = "atomFeed")
 public class RenderedATOMFeed implements Serializable {
 
     public static final long serialVersionUID = 5882302L;

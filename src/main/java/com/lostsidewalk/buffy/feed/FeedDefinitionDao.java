@@ -1,17 +1,22 @@
 package com.lostsidewalk.buffy.feed;
 
+import com.google.gson.Gson;
 import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.DataUpdateException;
+import com.lostsidewalk.buffy.feed.FeedDefinition.FeedStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.postgresql.util.PGobject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
 
 import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.PreparedStatement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -20,10 +25,13 @@ import java.util.Date;
 import java.util.List;
 
 import static com.lostsidewalk.buffy.feed.FeedDefinition.computeImageHash;
+import static java.util.Optional.ofNullable;
 
 @Slf4j
 @Component
 public class FeedDefinitionDao {
+
+    private static final Gson GSON = new Gson();
 
     @Autowired
     JdbcTemplate jdbcTemplate;
@@ -49,7 +57,7 @@ public class FeedDefinitionDao {
                     "feed_generator," +
                     "transport_ident," +
                     "username," +
-                    "is_active," +
+                    "feed_status," +
                     "export_config," +
                     "copyright," +
                     "language, " +
@@ -60,26 +68,33 @@ public class FeedDefinitionDao {
                     "(?,?,?,?,?,?,?,cast(? as json),?,?,?,?,?)";
 
     @SuppressWarnings("unused")
-    public void add(FeedDefinition feedDefinition) throws DataAccessException {
+    public Long add(FeedDefinition feedDefinition) throws DataAccessException {
         try {
-            int rowsUpdated = jdbcTemplate.update(INSERT_FEED_DEFINITIONS_SQL,
-                    feedDefinition.getIdent(),
-                    feedDefinition.getTitle(),
-                    feedDefinition.getDescription(),
-                    feedDefinition.getGenerator(),
-                    feedDefinition.getTransportIdent(),
-                    feedDefinition.getUsername(),
-                    feedDefinition.isActive(),
-                    feedDefinition.getExportConfig(),
-                    feedDefinition.getCopyright(),
-                    feedDefinition.getLanguage(),
-                    feedDefinition.getFeedImgSrc(),
-                    feedDefinition.getFeedImgTransportIdent(),
-                    toTimestamp(feedDefinition.getLastDeployed())
-            );
+            KeyHolder keyHolder = new GeneratedKeyHolder();
+
+            int rowsUpdated = jdbcTemplate.update(
+                    conn -> {
+                        PreparedStatement ps = conn.prepareStatement(INSERT_FEED_DEFINITIONS_SQL, new String[] { "id" });
+                        ps.setString(1, feedDefinition.getIdent());
+                        ps.setString(2, feedDefinition.getTitle());
+                        ps.setString(3, feedDefinition.getDescription());
+                        ps.setString(4, feedDefinition.getGenerator());
+                        ps.setString(5, feedDefinition.getTransportIdent());
+                        ps.setString(6, feedDefinition.getUsername());
+                        ps.setString(7, feedDefinition.getFeedStatus().toString());
+                        ps.setString(8, ofNullable(feedDefinition.getExportConfig()).map(GSON::toJson).orElse(null));
+                        ps.setString(9, feedDefinition.getCopyright());
+                        ps.setString(10, feedDefinition.getLanguage());
+                        ps.setString(11, feedDefinition.getFeedImgSrc());
+                        ps.setString(12, feedDefinition.getFeedImgTransportIdent());
+                        ps.setTimestamp(13, toTimestamp(feedDefinition.getLastDeployed()));
+
+                        return ps;
+                    }, keyHolder);
             if (!(rowsUpdated > 0)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "add", feedDefinition);
             }
+            return keyHolder.getKeyAs(Long.class);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "add", e.getMessage(), feedDefinition);
@@ -94,7 +109,7 @@ public class FeedDefinitionDao {
         String feedGenerator = rs.getString("feed_generator");
         String transportIdent = rs.getString("transport_ident");
         String username = rs.getString("username");
-        boolean isActive = rs.getBoolean("is_active");
+        String feedStatus = rs.getString("feed_status");
         String exportConfig = null;
         PGobject exportConfigObj = (PGobject) rs.getObject("export_config");
         if (exportConfigObj != null) {
@@ -106,14 +121,14 @@ public class FeedDefinitionDao {
         String feedImgTransportIdent = rs.getString("feed_img_transport_ident");
         Timestamp lastDeployedTimestamp = rs.getTimestamp("last_deployed_timestamp");
 
-        FeedDefinition f = new FeedDefinition(
+        FeedDefinition f = FeedDefinition.from(
                 feedIdent,
                 feedTitle,
                 feedDesc,
                 feedGenerator,
                 transportIdent,
                 username,
-                isActive,
+                FeedStatus.valueOf(feedStatus),
                 exportConfig,
                 feedCopyright,
                 feedLanguage,
@@ -180,16 +195,16 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String FIND_BY_FEED_IDENT_SQL = "select * from feed_definitions where username = ? and feed_ident = ?";
+    private static final String FIND_BY_FEED_ID_SQL = "select * from feed_definitions where username = ? and id = ?";
 
     @SuppressWarnings("unused")
-    public FeedDefinition findByFeedIdent(String username, String feedIdent) throws DataAccessException {
+    public FeedDefinition findByFeedId(String username, Long id) throws DataAccessException {
         try {
-            List<FeedDefinition> results = jdbcTemplate.query(FIND_BY_FEED_IDENT_SQL, new Object[] { username, feedIdent }, FEED_DEFINITION_ROW_MAPPER);
+            List<FeedDefinition> results = jdbcTemplate.query(FIND_BY_FEED_ID_SQL, new Object[] { username, id }, FEED_DEFINITION_ROW_MAPPER);
             return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findByFeedIdent", e.getMessage(), username, feedIdent);
+            throw new DataAccessException(getClass().getSimpleName(), "findByFeedId", e.getMessage(), username, id);
         }
     }
 
@@ -206,63 +221,69 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String TOGGLE_ACTIVE_BY_ID_SQL = "update feed_definitions set is_active = not is_active where id = ? and username = ?";
-
-    private static final String CHECK_ACTIVE_BY_ID_SQL = "select is_active from feed_definitions where id = ? and username = ?";
+    private static final String UPDATE_LAST_DEPLOYED_TIMESTAMP_SQL = "update feed_definitions set last_deployed_timestamp = ? where id = ? and username = ?";
 
     @SuppressWarnings("unused")
-    public Boolean toggleActiveById(String username, long id) throws DataAccessException, DataUpdateException {
+    public void updateLastDeployed(String username, Long feedId, Date lastDeployed) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(TOGGLE_ACTIVE_BY_ID_SQL, id, username);
+            rowsUpdated = jdbcTemplate.update(UPDATE_LAST_DEPLOYED_TIMESTAMP_SQL, toTimestamp(lastDeployed), feedId, username);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "toggleActiveById", e.getMessage(), username, id);
+            throw new DataAccessException(getClass().getSimpleName(), "updateLastDeployed", e.getMessage(), username, feedId, lastDeployed);
         }
         if (!(rowsUpdated > 0)) {
-            throw new DataUpdateException(getClass().getSimpleName(), "toggleActiveById", username, id);
-        }
-        try {
-            return jdbcTemplate.queryForObject(CHECK_ACTIVE_BY_ID_SQL, new Object[]{id, username}, Boolean.class);
-        } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "toggleActiveById", e.getMessage(), username, id);
+            throw new DataUpdateException(getClass().getSimpleName(), "updateLastDeployed", username, feedId, lastDeployed);
         }
     }
 
-    private static final String MARK_ACTIVE_BY_ID_SQL = "update feed_definitions set is_active = true where id = ? and username = ?";
+    private static final String CHECK_DEPLOYED_BY_ID_SQL_TEMPLATE = "select (last_deployed_timestamp is not null) from feed_definitions where id = %s and username = ?";
 
     @SuppressWarnings("unused")
-    public void markActiveById(String username, long id) throws DataAccessException, DataUpdateException {
-        int rowsUpdated;
+    public Boolean checkDeployed(String username, long id) throws DataAccessException {
         try {
-            rowsUpdated = jdbcTemplate.update(MARK_ACTIVE_BY_ID_SQL, id, username);
+            String sql = String.format(CHECK_DEPLOYED_BY_ID_SQL_TEMPLATE, String.valueOf(id).replaceAll("[^\\d]", ""));
+            return jdbcTemplate.queryForObject(sql, new Object[]{username}, Boolean.class);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "markActiveById", e.getMessage(), username, id);
-        }
-        if (!(rowsUpdated > 0)) {
-            throw new DataUpdateException(getClass().getSimpleName(), "markActiveById", username, id);
+            throw new DataAccessException(getClass().getSimpleName(), "checkPublished", e.getMessage(), username, id);
         }
     }
 
-    private static final String UPDATE_LAST_DEPLOYED_TIMESTAMP_BY_IDENT_SQL = "update feed_definitions set last_deployed_timestamp = ? where feed_ident = ? and username = ?";
+    private static final String CLEAR_LAST_DEPLOYED_BY_ID_SQL = "update feed_definitions set last_deployed_timestamp = null where id = ? and username = ?";
 
     @SuppressWarnings("unused")
-    public void updateLastDeployed(String username, String feedIdent, Date lastDeployed) throws DataAccessException, DataUpdateException {
+    public void clearLastDeployed(String username, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(UPDATE_LAST_DEPLOYED_TIMESTAMP_BY_IDENT_SQL, toTimestamp(lastDeployed), feedIdent, username);
+            rowsUpdated = jdbcTemplate.update(CLEAR_LAST_DEPLOYED_BY_ID_SQL, id, username);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "updateLastDeployed", e.getMessage(), username, feedIdent, lastDeployed);
+            throw new DataAccessException(getClass().getSimpleName(), "clearLastDeployed", e.getMessage(), username, id);
         }
         if (!(rowsUpdated > 0)) {
-            throw new DataUpdateException(getClass().getSimpleName(), "updateLastDeployed", username, feedIdent, lastDeployed);
+            throw new DataUpdateException(getClass().getSimpleName(), "clearLastDeployed", username, id);
         }
     }
 
-    private static final String UPDATE_BY_IDENT_SQL = "update feed_definitions set " +
+    private static final String UPDATE_FEED_STATUS_BY_ID = "update feed_definitions set feed_status = ? where id = ? and username = ?";
+
+    @SuppressWarnings("unused")
+    public void updateFeedStatus(String username, long id, FeedStatus feedStatus) throws DataAccessException, DataUpdateException {
+        int rowsUpdated;
+        try {
+            rowsUpdated = jdbcTemplate.update(UPDATE_FEED_STATUS_BY_ID, feedStatus.toString(), id, username);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "updateFeedStatus", e.getMessage(), username, id, feedStatus);
+        }
+        if (!(rowsUpdated > 0)) {
+            throw new DataUpdateException(getClass().getSimpleName(), "updateFeedStatus", username, id, feedStatus);
+        }
+    }
+
+    private static final String UPDATE_BY_ID_SQL = "update feed_definitions set " +
+            "feed_ident = ?, " +
             "feed_desc = ?, " +
             "feed_title = ?, " +
             "feed_generator = ?, " +
@@ -271,10 +292,10 @@ public class FeedDefinitionDao {
             "language = ?, " +
             "feed_img_src = ?, " +
             "feed_img_transport_ident = ? " +
-        "where feed_ident = ? and username = ?";
+        "where id = ? and username = ?";
 
     @SuppressWarnings("unused")
-    public void updateFeed(String username, String feedIdent, String description, String title, String generator,
+    public void updateFeed(String username, Long id, String feedIdent, String description, String title, String generator,
                        Serializable exportConfig, String copyright, String language, String feedImgSrc) throws DataAccessException, DataUpdateException {
         String feedImgTransportIdent = null;
         try {
@@ -285,7 +306,8 @@ public class FeedDefinitionDao {
         }
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(UPDATE_BY_IDENT_SQL,
+            rowsUpdated = jdbcTemplate.update(UPDATE_BY_ID_SQL,
+                    feedIdent,
                     description,
                     title,
                     generator,
@@ -294,7 +316,7 @@ public class FeedDefinitionDao {
                     language,
                     feedImgSrc,
                     feedImgTransportIdent,
-                    feedIdent,
+                    id,
                     username
             );
         } catch (Exception e) {

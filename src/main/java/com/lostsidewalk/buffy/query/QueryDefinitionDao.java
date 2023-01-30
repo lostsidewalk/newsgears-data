@@ -37,21 +37,23 @@ public class QueryDefinitionDao {
 
     private static final String INSERT_QUERY_DEFINITIONS_SQL =
             "insert into query_definitions (" +
-                    "feed_ident," +
+                    "feed_id," +
                     "username," +
+                    "query_title," +
                     "query_text," +
                     "query_type," +
                     "query_config" +
                     ") values " +
-                    "(?,?,?,?,?::json)";
+                    "(?,?,?,?,?,?::json)";
 
     @SuppressWarnings("unused")
     public void add(QueryDefinition queryDefinition) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(INSERT_QUERY_DEFINITIONS_SQL,
-                    queryDefinition.getFeedIdent(),
+                    queryDefinition.getFeedId(),
                     queryDefinition.getUsername(),
+                    queryDefinition.getQueryTitle(),
                     queryDefinition.getQueryText(),
                     queryDefinition.getQueryType(),
                     queryDefinition.getQueryConfig()
@@ -71,8 +73,9 @@ public class QueryDefinitionDao {
         try {
             List<Object[]> args = queryDefinitions.stream()
                     .map(q -> new Object[] {
-                            q.getFeedIdent(),
+                            q.getFeedId(),
                             q.getUsername(),
+                            q.getQueryTitle(),
                             q.getQueryText(),
                             q.getQueryType(),
                             q.getQueryConfig(),
@@ -89,8 +92,9 @@ public class QueryDefinitionDao {
 
     final RowMapper<QueryDefinition> QUERY_DEFINITION_ROW_MAPPER = (rs, rowNum) -> {
         Long id = rs.getLong("id");
-        String feedIdent = rs.getString("feed_ident");
+        Long feedId = rs.getLong("feed_id");
         String username = rs.getString("username");
+        String queryTitle = rs.getString("query_title");
         String queryText = rs.getString("query_text");
         String queryType = rs.getString("query_type");
         String queryConfig = null;
@@ -100,8 +104,9 @@ public class QueryDefinitionDao {
         }
 
         QueryDefinition q = QueryDefinition.from(
-                feedIdent,
+                feedId,
                 username,
+                queryTitle,
                 queryText,
                 queryType,
                 queryConfig
@@ -142,19 +147,19 @@ public class QueryDefinitionDao {
         }
     }
 
-    private static final String DELETE_BY_FEED_IDENT_SQL = "delete from query_definitions where feed_ident = ?";
+    private static final String DELETE_BY_FEED_ID_SQL = "delete from query_definitions where feed_id = ?";
 
     @SuppressWarnings("UnusedReturnValue")
-    public void deleteByFeedIdent(String feedIdent) throws DataAccessException, DataUpdateException {
+    public void deleteByFeedId(Long feedId) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(DELETE_BY_FEED_IDENT_SQL, feedIdent);
+            rowsUpdated = jdbcTemplate.update(DELETE_BY_FEED_ID_SQL, feedId);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "deleteByFeedIdent", e.getMessage(), feedIdent);
+            throw new DataAccessException(getClass().getSimpleName(), "deleteByFeedId", e.getMessage(), feedId);
         }
         if (!(rowsUpdated > 0)) {
-            throw new DataUpdateException(getClass().getSimpleName(), "deleteByFeedIdent", feedIdent);
+            throw new DataUpdateException(getClass().getSimpleName(), "deleteByFeedId", feedId);
         }
     }
 
@@ -170,7 +175,10 @@ public class QueryDefinitionDao {
         }
     }
 
-    private static final String FIND_ALL_ACTIVE_SQL = "select * from query_definitions q join feed_definitions f on f.feed_ident = q.feed_ident where f.is_active = true";
+    private static final String FIND_ALL_ACTIVE_SQL =
+            "select * from query_definitions q " +
+                    "join feed_definitions f on f.id = q.feed_id " +
+                    "where f.feed_status = 'ENABLED'";
 
     @SuppressWarnings("unused")
     public List<QueryDefinition> findAllActive() throws DataAccessException {
@@ -182,27 +190,27 @@ public class QueryDefinitionDao {
         }
     }
 
-    private static final String FIND_BY_FEED_IDENT_SQL = "select * from query_definitions where username = ? and feed_ident = ?";
+    private static final String FIND_BY_FEED_ID_SQL = "select * from query_definitions where username = ? and feed_id = ?";
 
     @SuppressWarnings("unused")
-    public List<QueryDefinition> findByFeedIdent(String username, String feedIdent) throws DataAccessException {
+    public List<QueryDefinition> findByFeedId(String username, Long feedId) throws DataAccessException {
         try {
-            return jdbcTemplate.query(FIND_BY_FEED_IDENT_SQL, new Object[] { username, feedIdent }, QUERY_DEFINITION_ROW_MAPPER);
+            return jdbcTemplate.query(FIND_BY_FEED_ID_SQL, new Object[] { username, feedId }, QUERY_DEFINITION_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findByFeedIdent", e.getMessage(), username, feedIdent);
+            throw new DataAccessException(getClass().getSimpleName(), "findByFeedIdent", e.getMessage(), username, feedId);
         }
     }
 
-    private static final String FIND_BY_FEED_IDENT_AND_QUERY_TYPE_SQL = "select * from query_definitions where username = ? and feed_ident = ? and query_type = ?";
+    private static final String FIND_BY_FEED_ID_AND_QUERY_TYPE_SQL = "select * from query_definitions where username = ? and feed_id = ? and query_type = ?";
 
     @SuppressWarnings("unused")
-    public List<QueryDefinition> findByFeedIdent(String username, String feedIdent, String queryType) throws DataAccessException {
+    public List<QueryDefinition> findByFeedId(String username, Long feedId, String queryType) throws DataAccessException {
         try {
-            return jdbcTemplate.query(FIND_BY_FEED_IDENT_AND_QUERY_TYPE_SQL, new Object[] { username, feedIdent, queryType }, QUERY_DEFINITION_ROW_MAPPER);
+            return jdbcTemplate.query(FIND_BY_FEED_ID_AND_QUERY_TYPE_SQL, new Object[] { username, feedId, queryType }, QUERY_DEFINITION_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findByFeedIdent", e.getMessage(), username, feedIdent, queryType);
+            throw new DataAccessException(getClass().getSimpleName(), "findByFeedId", e.getMessage(), username, feedId, queryType);
         }
     }
 
@@ -218,7 +226,12 @@ public class QueryDefinitionDao {
         }
     }
 
-    private static final String UPDATE_QUERY_SQL = "update query_definitions set query_text = ?, query_type = ?, query_config = ?::json where id = ?";
+    private static final String UPDATE_QUERY_SQL = "update query_definitions set " +
+            "query_title = ?, " +
+            "query_text = ?, " +
+            "query_type = ?, " +
+            "query_config = ?::json " +
+            "where id = ?";
 
     @SuppressWarnings("unused")
     public void updateQueries(List<Object[]> queryParams) throws DataAccessException {
@@ -231,8 +244,8 @@ public class QueryDefinitionDao {
     }
 
     @SuppressWarnings("unused")
-    public void replaceByFeedIdent(String feedIdent, List<QueryDefinition> queryDefinitions) throws DataAccessException, DataUpdateException {
-        deleteByFeedIdent(feedIdent);
+    public void replaceByFeedId(Long feedId, List<QueryDefinition> queryDefinitions) throws DataAccessException, DataUpdateException {
+        deleteByFeedId(feedId);
         add(queryDefinitions);
     }
 }

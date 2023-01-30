@@ -320,7 +320,7 @@ public class UserDao extends AbstractDao<User> {
         if (user != null) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(UPDATE_PASSWORD_SQL, user.getPassword());
+                rowsUpdated = getJdbcTemplate().update(UPDATE_PASSWORD_SQL, user.getPassword(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
                 throw new DataAccessException(getClass().getSimpleName(), "updatePassword", e.getMessage(), user.getId()); // password not shown
