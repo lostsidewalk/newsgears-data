@@ -1,5 +1,7 @@
 package com.lostsidewalk.buffy.query;
 
+import com.google.common.collect.Lists;
+import com.google.gson.Gson;
 import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.DataUpdateException;
 import lombok.extern.slf4j.Slf4j;
@@ -7,17 +9,25 @@ import org.postgresql.util.PGobject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
+import java.sql.PreparedStatement;
 import java.util.List;
 
 import static java.util.Arrays.stream;
+import static java.util.Optional.ofNullable;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
+import static org.apache.commons.collections4.CollectionUtils.size;
+import static org.apache.commons.lang3.StringUtils.EMPTY;
 
 @Slf4j
 @Component
 public class QueryDefinitionDao {
+
+    private static final Gson GSON = new Gson();
 
     @Autowired
     JdbcTemplate jdbcTemplate;
@@ -47,17 +57,23 @@ public class QueryDefinitionDao {
                     "(?,?,?,?,?,?::json)";
 
     @SuppressWarnings("unused")
-    public void add(QueryDefinition queryDefinition) throws DataAccessException, DataUpdateException {
+    public Long add(QueryDefinition queryDefinition) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
+        KeyHolder keyHolder;
         try {
-            rowsUpdated = jdbcTemplate.update(INSERT_QUERY_DEFINITIONS_SQL,
-                    queryDefinition.getFeedId(),
-                    queryDefinition.getUsername(),
-                    queryDefinition.getQueryTitle(),
-                    queryDefinition.getQueryText(),
-                    queryDefinition.getQueryType(),
-                    queryDefinition.getQueryConfig()
-            );
+            keyHolder = new GeneratedKeyHolder();
+            rowsUpdated = jdbcTemplate.update(
+                    conn -> {
+                        PreparedStatement ps = conn.prepareStatement(INSERT_QUERY_DEFINITIONS_SQL, new String[] { "id" });
+                        ps.setLong(1, queryDefinition.getFeedId());
+                        ps.setString(2, queryDefinition.getUsername());
+                        ps.setString(3, queryDefinition.getQueryTitle());
+                        ps.setString(4, queryDefinition.getQueryText());
+                        ps.setString(5, queryDefinition.getQueryType());
+                        ps.setString(6, ofNullable(queryDefinition.getQueryConfig()).map(GSON::toJson).orElse(null));
+
+                        return ps;
+                    }, keyHolder);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "add", e.getMessage(), queryDefinition);
@@ -65,29 +81,18 @@ public class QueryDefinitionDao {
         if (!(rowsUpdated > 0)) {
             throw new DataUpdateException(getClass().getSimpleName(), "add", queryDefinition);
         }
+        return keyHolder.getKeyAs(Long.class);
     }
 
     @SuppressWarnings("unused")
-    public void add(List<QueryDefinition> queryDefinitions) throws DataAccessException, DataUpdateException {
-        int rowsUpdated;
-        try {
-            List<Object[]> args = queryDefinitions.stream()
-                    .map(q -> new Object[] {
-                            q.getFeedId(),
-                            q.getUsername(),
-                            q.getQueryTitle(),
-                            q.getQueryText(),
-                            q.getQueryType(),
-                            q.getQueryConfig(),
-                    }).collect(toList());
-            rowsUpdated = Arrays.stream(jdbcTemplate.batchUpdate(INSERT_QUERY_DEFINITIONS_SQL, args)).sum();
-        } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "add", e.getMessage(), queryDefinitions);
+    public List<Long> add(List<QueryDefinition> queryDefinitions) throws DataAccessException, DataUpdateException {
+
+        List<Long> newIds = Lists.newArrayListWithCapacity(size(queryDefinitions));
+        for (QueryDefinition q : queryDefinitions) {
+            newIds.add(add(q));
         }
-        if (!(rowsUpdated > 0)) {
-            throw new DataUpdateException(getClass().getSimpleName(), "add", queryDefinitions);
-        }
+
+        return newIds;
     }
 
     final RowMapper<QueryDefinition> QUERY_DEFINITION_ROW_MAPPER = (rs, rowNum) -> {
@@ -190,6 +195,37 @@ public class QueryDefinitionDao {
         }
     }
 
+    private static final String FIND_BY_ID_SQL = "select * from query_definitions where username = ? and id = ?";
+
+    @SuppressWarnings("unused")
+    public QueryDefinition findById(String username, Long id) throws DataAccessException {
+        try {
+            return jdbcTemplate.queryForObject(FIND_BY_ID_SQL, new Object[] { username, id }, QUERY_DEFINITION_ROW_MAPPER);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "findById", e.getMessage(), username, id);
+        }
+    }
+
+    private static final String FIND_BY_IDS_SQL_TEMPLATE = "select * from query_definitions where username = ? and id in (%s)";
+
+    @SuppressWarnings("unused")
+    public List<QueryDefinition> findByIds(String username, List<Long> ids) throws DataAccessException {
+        try {
+            String inSql = ids.stream()
+                    .map(Object::toString)
+                    .map(s -> s.replaceAll("[^\\d-]", EMPTY))
+                    .collect(joining(","));
+            return jdbcTemplate.query(
+                    String.format(FIND_BY_IDS_SQL_TEMPLATE, inSql),
+                    new Object[]{username},
+                    QUERY_DEFINITION_ROW_MAPPER);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "findByIds", e.getMessage(), username, ids);
+        }
+    }
+
     private static final String FIND_BY_FEED_ID_SQL = "select * from query_definitions where username = ? and feed_id = ?";
 
     @SuppressWarnings("unused")
@@ -198,7 +234,7 @@ public class QueryDefinitionDao {
             return jdbcTemplate.query(FIND_BY_FEED_ID_SQL, new Object[] { username, feedId }, QUERY_DEFINITION_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findByFeedIdent", e.getMessage(), username, feedId);
+            throw new DataAccessException(getClass().getSimpleName(), "findByFeedId", e.getMessage(), username, feedId);
         }
     }
 
@@ -244,8 +280,8 @@ public class QueryDefinitionDao {
     }
 
     @SuppressWarnings("unused")
-    public void replaceByFeedId(Long feedId, List<QueryDefinition> queryDefinitions) throws DataAccessException, DataUpdateException {
+    public List<Long> replaceByFeedId(Long feedId, List<QueryDefinition> queryDefinitions) throws DataAccessException, DataUpdateException {
         deleteByFeedId(feedId);
-        add(queryDefinitions);
+        return add(queryDefinitions);
     }
 }

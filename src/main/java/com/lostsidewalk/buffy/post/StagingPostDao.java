@@ -619,6 +619,18 @@ public class StagingPostDao {
         }
     }
 
+    private static final String UPDATE_POST_READ_STATUS_BY_FEED_ID = "update staging_posts set post_read_status = ? where feed_id = ? and username = ?";
+
+    @SuppressWarnings("unused")
+    public void updateFeedReadStatus(String username, long id, PostReadStatus postStatus) throws DataAccessException {
+        try {
+            jdbcTemplate.update(UPDATE_POST_READ_STATUS_BY_FEED_ID, postStatus == null ? null : postStatus.toString(), id, username);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "updateFeedReadStatus", e.getMessage(), username, id, postStatus);
+        }
+    }
+
     private static final String UPDATE_POST_PUB_STATUS_BY_ID = "update staging_posts set post_pub_status = ? where id = ? and username = ?";
 
     @SuppressWarnings("unused")

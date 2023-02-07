@@ -39,8 +39,6 @@ public class FeedDiscoveryInfoDao {
     final RowMapper<FeedDiscoveryInfo> FEED_DISCOVERY_INFO_ROW_MAPPER = (rs, rowNum) -> {
         // id
         Long id = rs.getLong("id");
-        // error
-        String error = rs.getString("error");
         // feed URL
         String feedUrl = rs.getString("feed_url");
         // http status code
@@ -128,6 +126,10 @@ public class FeedDiscoveryInfoDao {
         List<FeedDiscoverySampleItem> sampleEntries = GSON.fromJson(sampleEntriesStr, new TypeToken<List<FeedDiscoverySampleItem>>() {}.getType());
         // is_url_upgradeable
         boolean isUrlUpgradable = rs.getBoolean("is_url_upgradeable");
+        // error type
+        String errorType = rs.getString("error_type");
+        // error detail
+        String errorDetail = rs.getString("error_detail");
 
         FeedDiscoveryInfo i = FeedDiscoveryInfo.from(
                 feedUrl,
@@ -159,7 +161,8 @@ public class FeedDiscoveryInfoDao {
                 isUrlUpgradable
         );
         i.setId(id);
-        i.setError(ofNullable(error).map(e -> FeedDiscoveryExceptionType.valueOf(error)).orElse(null));
+        i.setErrorType(ofNullable(errorType).map(e -> FeedDiscoveryExceptionType.valueOf(errorType)).orElse(null)); // TODO: safety
+        i.setErrorDetail(errorDetail);
 
         return i;
     };
@@ -176,7 +179,7 @@ public class FeedDiscoveryInfoDao {
         }
     }
 
-    private static final String FIND_DISCOVERABLE_SQL = "select * from feed_discovery_info where error is null";
+    private static final String FIND_DISCOVERABLE_SQL = "select * from feed_discovery_info where error_type is null";
 
     @SuppressWarnings("unused")
     public List<FeedDiscoveryInfo> findDiscoverable() throws DataAccessException {
@@ -215,7 +218,8 @@ public class FeedDiscoveryInfoDao {
             "categories = ?::json, " +
             "sample_entries = ?::json, " +
             "is_url_upgradeable = ?, " +
-            "error = ? " +
+            "error_type = ?, " +
+            "error_detail = ? " +
         "where id = ?";
 
     @SuppressWarnings("unused")
@@ -264,8 +268,9 @@ public class FeedDiscoveryInfoDao {
                 ps.setString(24, GSON.toJson(feedDiscoveryInfo.getCategories()));
                 ps.setString(25, GSON.toJson(feedDiscoveryInfo.getSampleEntries()));
                 ps.setBoolean(26, feedDiscoveryInfo.isUrlUpgradable());
-                ps.setString(27, ofNullable(feedDiscoveryInfo.getError()).map(Enum::name).orElse(null));
-                ps.setLong(28, feedDiscoveryInfo.getId());
+                ps.setString(27, ofNullable(feedDiscoveryInfo.getErrorType()).map(Enum::name).orElse(null));
+                ps.setString(28, feedDiscoveryInfo.getErrorDetail());
+                ps.setLong(29, feedDiscoveryInfo.getId());
             });
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);

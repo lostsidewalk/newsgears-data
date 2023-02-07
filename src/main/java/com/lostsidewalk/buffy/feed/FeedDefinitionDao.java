@@ -68,11 +68,12 @@ public class FeedDefinitionDao {
                     "(?,?,?,?,?,?,?,cast(? as json),?,?,?,?,?)";
 
     @SuppressWarnings("unused")
-    public Long add(FeedDefinition feedDefinition) throws DataAccessException {
+    public Long add(FeedDefinition feedDefinition) throws DataAccessException, DataUpdateException {
+        int rowsUpdated;
+        KeyHolder keyHolder;
         try {
-            KeyHolder keyHolder = new GeneratedKeyHolder();
-
-            int rowsUpdated = jdbcTemplate.update(
+            keyHolder = new GeneratedKeyHolder();
+            rowsUpdated = jdbcTemplate.update(
                     conn -> {
                         PreparedStatement ps = conn.prepareStatement(INSERT_FEED_DEFINITIONS_SQL, new String[] { "id" });
                         ps.setString(1, feedDefinition.getIdent());
@@ -91,14 +92,14 @@ public class FeedDefinitionDao {
 
                         return ps;
                     }, keyHolder);
-            if (!(rowsUpdated > 0)) {
-                throw new DataUpdateException(getClass().getSimpleName(), "add", feedDefinition);
-            }
-            return keyHolder.getKeyAs(Long.class);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "add", e.getMessage(), feedDefinition);
         }
+        if (!(rowsUpdated > 0)) {
+            throw new DataUpdateException(getClass().getSimpleName(), "add", feedDefinition);
+        }
+        return keyHolder.getKeyAs(Long.class);
     }
 
     final RowMapper<FeedDefinition> FEED_DEFINITION_ROW_MAPPER = (rs, rowNum) -> {
