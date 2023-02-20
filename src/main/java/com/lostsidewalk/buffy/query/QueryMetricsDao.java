@@ -30,10 +30,11 @@ public class QueryMetricsDao {
                     "redirect_http_status_message," +
                     "import_timestamp," +
                     "import_ct," +
+                    "persist_ct," +
                     "error_type," +
                     "error_detail" +
                     ") values " +
-                    "(?,?,?,?,?,?,?,?,?,?)";
+                    "(?,?,?,?,?,?,?,?,?,?,?)";
 
     @SuppressWarnings("unused")
     public void add(QueryMetrics queryMetrics) throws DataAccessException, DataUpdateException {
@@ -48,6 +49,7 @@ public class QueryMetricsDao {
                     queryMetrics.getRedirectHttpStatusMessage(),
                     queryMetrics.getImportTimestamp(),
                     queryMetrics.getImportCt(),
+                    queryMetrics.getPersistCt(),
                     ofNullable(queryMetrics.getErrorType()).map(Enum::name).orElse(null),
                     queryMetrics.getErrorDetail()
             );
@@ -77,6 +79,8 @@ public class QueryMetricsDao {
         Timestamp importTimestamp = rs.getTimestamp("import_timestamp");
         // import ct
         Integer importCt = rs.getInt("import_ct");
+        // persist ct
+        Integer persistCt = rs.getInt("persist_ct");
         // error type
         String errorType = rs.getString("error_type");
         // error detail
@@ -93,6 +97,7 @@ public class QueryMetricsDao {
                 importCt
         );
         q.setId(id);
+        q.setPersistCt(persistCt);
         q.setErrorType(ofNullable(errorType).map(e -> QueryMetrics.QueryExceptionType.valueOf(errorType)).orElse(null)); // TODO: safety
         q.setErrorDetail(errorDetail);
 
