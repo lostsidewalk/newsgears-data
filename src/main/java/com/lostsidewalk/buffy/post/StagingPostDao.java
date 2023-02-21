@@ -569,7 +569,7 @@ public class StagingPostDao {
     @SuppressWarnings("unused")
     public Boolean checkPublished(String username, long id) throws DataAccessException {
         try {
-            String sql = String.format(CHECK_PUBLISHED_BY_ID_SQL_TEMPLATE, String.valueOf(id).replaceAll("[^\\d]", ""));
+            String sql = String.format(CHECK_PUBLISHED_BY_ID_SQL_TEMPLATE, String.valueOf(id).replaceAll("\\D", ""));
             return jdbcTemplate.queryForObject(sql, new Object[]{username}, Boolean.class);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
@@ -654,6 +654,22 @@ public class StagingPostDao {
         }
         if (!(rowsUpdated > 0)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updatePostPubStatus", username, id, postStatus);
+        }
+    }
+
+    private static final String UPDATE_POST_PUB_STATUS_BY_FEED_ID = "update staging_posts set post_pub_status = ? where feed_id = ? and username = ? and post_pub_status is not null";
+
+    @SuppressWarnings("unused")
+    public void updateFeedPubStatus(String username, long id, PostPubStatus postStatus) throws DataAccessException, DataUpdateException {
+        int rowsUpdated;
+        try {
+            rowsUpdated = jdbcTemplate.update(UPDATE_POST_PUB_STATUS_BY_FEED_ID, postStatus == null ? null : postStatus.toString(), id, username);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "updateFeedPubStatus", e.getMessage(), username, id, postStatus);
+        }
+        if (!(rowsUpdated > 0)) {
+            throw new DataUpdateException(getClass().getSimpleName(), "updateFeedPubStatus", username, id, postStatus);
         }
     }
 

@@ -243,7 +243,7 @@ public class FeedDefinitionDao {
     @SuppressWarnings("unused")
     public Boolean checkDeployed(String username, long id) throws DataAccessException {
         try {
-            String sql = String.format(CHECK_DEPLOYED_BY_ID_SQL_TEMPLATE, String.valueOf(id).replaceAll("[^\\d]", ""));
+            String sql = String.format(CHECK_DEPLOYED_BY_ID_SQL_TEMPLATE, String.valueOf(id).replaceAll("\\D", ""));
             return jdbcTemplate.queryForObject(sql, new Object[]{username}, Boolean.class);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
