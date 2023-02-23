@@ -82,9 +82,6 @@ public class StagingPostDao {
                     "importer_desc," +
                     "query_id," +
                     "feed_id," +
-                    "object_source," +
-                    "source_name," +
-                    "source_url," +
                     "import_timestamp," +
                     "post_read_status," +
                     "post_pub_status," +
@@ -113,9 +110,6 @@ public class StagingPostDao {
                     "?," + // importer_desc
                     "?," + // query_id
                     "?," + // feed_id
-                    "cast(? as json)," + // object_source
-                    "?," + // source_name
-                    "?," + // source_url
                     "?," + // import_timestamp
                     "?," + // post_read_status
                     "?," + // post_pub_status
@@ -160,22 +154,19 @@ public class StagingPostDao {
                         ps.setString(12, stagingPost.getImporterDesc());
                         ps.setLong(13, stagingPost.getQueryId()); // nn
                         ps.setLong(14, stagingPost.getFeedId()); // nn
-                        ps.setString(15, stagingPost.getSourceObj().toString()); // nn
-                        ps.setString(16, stagingPost.getSourceName());
-                        ps.setString(17, stagingPost.getSourceUrl());
-                        ps.setTimestamp(18, toTimestamp(stagingPost.getImportTimestamp()));
-                        ps.setString(19, ofNullable(stagingPost.getPostReadStatus()).map(Enum::name).orElse(null));
-                        ps.setString(20, ofNullable(stagingPost.getPostPubStatus()).map(Enum::name).orElse(null));
-                        ps.setString(21, stagingPost.getUsername());
-                        ps.setString(22, stagingPost.getPostComment());
-                        ps.setString(23, stagingPost.getPostRights());
-                        ps.setString(24, ofNullable(stagingPost.getContributors()).map(GSON::toJson).orElse(null));
-                        ps.setString(25, ofNullable(stagingPost.getAuthors()).map(GSON::toJson).orElse(null));
-                        ps.setString(26, ofNullable(stagingPost.getPostCategories()).map(GSON::toJson).orElse(null));
-                        ps.setTimestamp(27, toTimestamp(stagingPost.getPublishTimestamp()));
-                        ps.setTimestamp(28, toTimestamp(stagingPost.getExpirationTimestamp()));
-                        ps.setString(29, ofNullable(stagingPost.getEnclosures()).map(GSON::toJson).orElse(null));
-                        ps.setTimestamp(30, toTimestamp(stagingPost.getLastUpdatedTimestamp()));
+                        ps.setTimestamp(15, toTimestamp(stagingPost.getImportTimestamp()));
+                        ps.setString(16, ofNullable(stagingPost.getPostReadStatus()).map(Enum::name).orElse(null));
+                        ps.setString(17, ofNullable(stagingPost.getPostPubStatus()).map(Enum::name).orElse(null));
+                        ps.setString(18, stagingPost.getUsername());
+                        ps.setString(19, stagingPost.getPostComment());
+                        ps.setString(20, stagingPost.getPostRights());
+                        ps.setString(21, ofNullable(stagingPost.getContributors()).map(GSON::toJson).orElse(null));
+                        ps.setString(22, ofNullable(stagingPost.getAuthors()).map(GSON::toJson).orElse(null));
+                        ps.setString(23, ofNullable(stagingPost.getPostCategories()).map(GSON::toJson).orElse(null));
+                        ps.setTimestamp(24, toTimestamp(stagingPost.getPublishTimestamp()));
+                        ps.setTimestamp(25, toTimestamp(stagingPost.getExpirationTimestamp()));
+                        ps.setString(26, ofNullable(stagingPost.getEnclosures()).map(GSON::toJson).orElse(null));
+                        ps.setTimestamp(27, toTimestamp(stagingPost.getLastUpdatedTimestamp()));
 
                         return ps;
                     }, keyHolder);
@@ -235,9 +226,6 @@ public class StagingPostDao {
         Long feedId = rs.getLong("feed_id");
         String importerDesc = rs.getString("importer_desc");
         Long queryId = rs.getLong("query_id");
-        String sourceObj = ((PGobject) rs.getObject("object_source")).getValue();
-        String sourceName = rs.getString("source_name");
-        String sourceUrl = rs.getString("source_url");
         Timestamp importTimestamp = rs.getTimestamp("import_timestamp");
         String postReadStatus = rs.getString("post_read_status");
         String postPubStatus = rs.getString("post_pub_status");
@@ -279,9 +267,6 @@ public class StagingPostDao {
                 feedId,
                 importerDesc,
                 queryId,
-                sourceObj,
-                sourceName,
-                sourceUrl,
                 postTitle,
                 postDesc,
                 postContents,
@@ -660,23 +645,19 @@ public class StagingPostDao {
     private static final String UPDATE_POST_PUB_STATUS_BY_FEED_ID = "update staging_posts set post_pub_status = ? where feed_id = ? and username = ? and post_pub_status is not null";
 
     @SuppressWarnings("unused")
-    public void updateFeedPubStatus(String username, long id, PostPubStatus postStatus) throws DataAccessException, DataUpdateException {
-        int rowsUpdated;
+    public void updateFeedPubStatus(String username, long id, PostPubStatus postStatus) throws DataAccessException {
         try {
-            rowsUpdated = jdbcTemplate.update(UPDATE_POST_PUB_STATUS_BY_FEED_ID, postStatus == null ? null : postStatus.toString(), id, username);
+            jdbcTemplate.update(UPDATE_POST_PUB_STATUS_BY_FEED_ID, postStatus == null ? null : postStatus.toString(), id, username);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "updateFeedPubStatus", e.getMessage(), username, id, postStatus);
-        }
-        if (!(rowsUpdated > 0)) {
-            throw new DataUpdateException(getClass().getSimpleName(), "updateFeedPubStatus", username, id, postStatus);
         }
     }
 
     private static final String UPDATE_POST_BY_ID_TEMPLATE = "update staging_posts set %s where id = ? and username = ?";
 
     @SuppressWarnings("unused")
-    public void updatePost(String username, long id, String sourceName, String sourceUrl, ContentObject postTitle, ContentObject postDesc,
+    public void updatePost(String username, long id, ContentObject postTitle, ContentObject postDesc,
                            List<ContentObject> postContents, PostMedia postMedia, PostITunes postITunes, String postUrl,
                            List<PostUrl> postUrls, String postImgUrl, String postComment, String postRights,
                            List<PostPerson> contributors, List<PostPerson> authors, List<String> postCategories,
@@ -689,14 +670,6 @@ public class StagingPostDao {
         // start with simple attributes
         //
         List<String> simpleUpdateAttrs = new ArrayList<>();
-        if (sourceName != null) {
-            updateArgs.add(sourceName);
-            simpleUpdateAttrs.add("source_name");
-        }
-        if (sourceUrl != null) {
-            updateArgs.add(sourceUrl);
-            simpleUpdateAttrs.add("source_url");
-        }
         if (postUrl != null) {
             updateArgs.add(postUrl);
             simpleUpdateAttrs.add("post_url");
