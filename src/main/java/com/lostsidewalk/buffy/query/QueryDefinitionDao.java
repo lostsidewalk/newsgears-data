@@ -50,11 +50,12 @@ public class QueryDefinitionDao {
                     "feed_id," +
                     "username," +
                     "query_title," +
+                    "query_image_url," +
                     "query_text," +
                     "query_type," +
                     "query_config" +
                     ") values " +
-                    "(?,?,?,?,?,?::json)";
+                    "(?,?,?,?,?,?,?::json)";
 
     @SuppressWarnings("unused")
     public Long add(QueryDefinition queryDefinition) throws DataAccessException, DataUpdateException {
@@ -68,9 +69,10 @@ public class QueryDefinitionDao {
                         ps.setLong(1, queryDefinition.getFeedId());
                         ps.setString(2, queryDefinition.getUsername());
                         ps.setString(3, queryDefinition.getQueryTitle());
-                        ps.setString(4, queryDefinition.getQueryText());
-                        ps.setString(5, queryDefinition.getQueryType());
-                        ps.setString(6, ofNullable(queryDefinition.getQueryConfig()).map(GSON::toJson).orElse(null));
+                        ps.setString(4, queryDefinition.getQueryImageUrl());
+                        ps.setString(5, queryDefinition.getQueryText());
+                        ps.setString(6, queryDefinition.getQueryType());
+                        ps.setString(7, ofNullable(queryDefinition.getQueryConfig()).map(GSON::toJson).orElse(null));
 
                         return ps;
                     }, keyHolder);
@@ -100,6 +102,7 @@ public class QueryDefinitionDao {
         Long feedId = rs.getLong("feed_id");
         String username = rs.getString("username");
         String queryTitle = rs.getString("query_title");
+        String queryImageUrl = rs.getString("query_image_url");
         String queryText = rs.getString("query_text");
         String queryType = rs.getString("query_type");
         String queryConfig = null;
@@ -112,6 +115,7 @@ public class QueryDefinitionDao {
                 feedId,
                 username,
                 queryTitle,
+                queryImageUrl,
                 queryText,
                 queryType,
                 queryConfig
@@ -264,6 +268,7 @@ public class QueryDefinitionDao {
 
     private static final String UPDATE_QUERY_SQL = "update query_definitions set " +
             "query_title = ?, " +
+            "query_image_url = ?, " +
             "query_text = ?, " +
             "query_type = ?, " +
             "query_config = ?::json " +
