@@ -6,6 +6,7 @@ import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.DataUpdateException;
 import com.lostsidewalk.buffy.discovery.FeedDiscoveryInfo.FeedDiscoveryExceptionType;
 import com.lostsidewalk.buffy.post.ContentObject;
+import com.lostsidewalk.buffy.post.StagingPost;
 import lombok.extern.slf4j.Slf4j;
 import org.postgresql.util.PGobject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -105,7 +107,7 @@ public class FeedDiscoveryInfoDao {
         if (supportedTypesObj != null) {
             supportedTypesStr = supportedTypesObj.getValue();
         }
-        List<String> supportedTypes = GSON.fromJson(supportedTypesStr, LIST_STRING_TYPE);
+        ArrayList<String> supportedTypes = GSON.fromJson(supportedTypesStr, LIST_STRING_TYPE);
         // web_master
         String webMaster = rs.getString("web_master");
         // uri
@@ -116,14 +118,14 @@ public class FeedDiscoveryInfoDao {
         if (categoriesObj != null) {
             categoriesStr = categoriesObj.getValue();
         }
-        List<String> categories = GSON.fromJson(categoriesStr, LIST_STRING_TYPE);
+        ArrayList<String> categories = GSON.fromJson(categoriesStr, LIST_STRING_TYPE);
         // sample_entries
         String sampleEntriesStr = null;
         PGobject sampleEntriesObj = (PGobject) rs.getObject("sample_entries");
         if (sampleEntriesObj != null) {
             sampleEntriesStr = sampleEntriesObj.getValue();
         }
-        List<FeedDiscoverySampleItem> sampleEntries = GSON.fromJson(sampleEntriesStr, new TypeToken<List<FeedDiscoverySampleItem>>() {}.getType());
+        ArrayList<StagingPost> sampleEntries = GSON.fromJson(sampleEntriesStr, new TypeToken<List<StagingPost>>() {}.getType());
         // is_url_upgradeable
         boolean isUrlUpgradable = rs.getBoolean("is_url_upgradeable");
         // error type
