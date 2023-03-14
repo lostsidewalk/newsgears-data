@@ -6,7 +6,6 @@ import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.DataUpdateException;
 import com.lostsidewalk.buffy.discovery.FeedDiscoveryInfo.FeedDiscoveryExceptionType;
 import com.lostsidewalk.buffy.post.ContentObject;
-import com.lostsidewalk.buffy.post.StagingPost;
 import lombok.extern.slf4j.Slf4j;
 import org.postgresql.util.PGobject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -119,13 +118,6 @@ public class FeedDiscoveryInfoDao {
             categoriesStr = categoriesObj.getValue();
         }
         ArrayList<String> categories = GSON.fromJson(categoriesStr, LIST_STRING_TYPE);
-        // sample_entries
-        String sampleEntriesStr = null;
-        PGobject sampleEntriesObj = (PGobject) rs.getObject("sample_entries");
-        if (sampleEntriesObj != null) {
-            sampleEntriesStr = sampleEntriesObj.getValue();
-        }
-        ArrayList<StagingPost> sampleEntries = GSON.fromJson(sampleEntriesStr, new TypeToken<List<StagingPost>>() {}.getType());
         // is_url_upgradeable
         boolean isUrlUpgradable = rs.getBoolean("is_url_upgradeable");
         // error type
@@ -159,7 +151,7 @@ public class FeedDiscoveryInfoDao {
                 webMaster,
                 uri,
                 categories,
-                sampleEntries,
+                null,
                 isUrlUpgradable
         );
         i.setId(id);
@@ -218,7 +210,6 @@ public class FeedDiscoveryInfoDao {
             "web_master = ?, " +
             "uri = ?, " +
             "categories = ?::json, " +
-            "sample_entries = ?::json, " +
             "is_url_upgradeable = ?, " +
             "error_type = ?, " +
             "error_detail = ? " +
@@ -268,11 +259,10 @@ public class FeedDiscoveryInfoDao {
                 ps.setString(22, feedDiscoveryInfo.getWebMaster());
                 ps.setString(23, feedDiscoveryInfo.getUri());
                 ps.setString(24, GSON.toJson(feedDiscoveryInfo.getCategories()));
-                ps.setString(25, GSON.toJson(feedDiscoveryInfo.getSampleEntries()));
-                ps.setBoolean(26, feedDiscoveryInfo.isUrlUpgradable());
-                ps.setString(27, ofNullable(feedDiscoveryInfo.getErrorType()).map(Enum::name).orElse(null));
-                ps.setString(28, feedDiscoveryInfo.getErrorDetail());
-                ps.setLong(29, feedDiscoveryInfo.getId());
+                ps.setBoolean(25, feedDiscoveryInfo.isUrlUpgradable());
+                ps.setString(26, ofNullable(feedDiscoveryInfo.getErrorType()).map(Enum::name).orElse(null));
+                ps.setString(27, feedDiscoveryInfo.getErrorDetail());
+                ps.setLong(28, feedDiscoveryInfo.getId());
             });
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
