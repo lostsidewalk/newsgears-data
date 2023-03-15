@@ -411,8 +411,9 @@ public class StagingPostDao {
         }
     }
 
-    private static final String FIND_BY_USER_SQL = "select * from staging_posts where username = ?";
+    private static final String FIND_BY_USER_SQL = "select * from staging_posts where username = ? and (post_pub_status is null or post_pub_status != 'ARCHIVED')";
 
+    // non-archived only
     @SuppressWarnings("unused")
     public List<StagingPost> findByUser(String username) throws DataAccessException {
         try {
@@ -427,8 +428,9 @@ public class StagingPostDao {
             "select s.* from staging_posts s " +
                 "join feed_definitions f on f.id = s.feed_id " +
                 "join users u on u.name = f.username " +
-                "where u.name = ? and f.id in (%s)";
+                "where u.name = ? and f.id in (%s) and (s.post_pub_status is null or s.post_pub_status != 'ARCHIVED')";
 
+    // non-archived only
     @SuppressWarnings("unused")
     public List<StagingPost> findByUserAndFeedIds(String username, List<Long> feedIds) throws DataAccessException {
         try {
@@ -447,8 +449,9 @@ public class StagingPostDao {
         }
     }
 
-    private static final String FIND_ALL_UNPUBLISHED_SQL = "select * from staging_posts where is_published = false";
+    private static final String FIND_ALL_UNPUBLISHED_SQL = "select * from staging_posts where is_published = false and (post_pub_status is null or post_pub_status != 'ARCHIVED')";
 
+    // non-archived only
     @SuppressWarnings("unused")
     List<StagingPost> findAllUnpublished() throws DataAccessException {
         try {
@@ -459,8 +462,9 @@ public class StagingPostDao {
         }
     }
 
-    private static final String FIND_UNPUBLISHED_BY_USER_SQL = "select * from staging_posts where username = ? and is_published = false";
+    private static final String FIND_UNPUBLISHED_BY_USER_SQL = "select * from staging_posts where username = ? and is_published = false and (post_pub_status is null or post_pub_status != 'ARCHIVED')";
 
+    // non-archived only
     @SuppressWarnings("unused")
     List<StagingPost> findUnpublishedByUser(String username) throws DataAccessException {
         try {
