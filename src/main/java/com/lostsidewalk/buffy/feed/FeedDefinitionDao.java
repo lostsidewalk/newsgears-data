@@ -36,7 +36,7 @@ public class FeedDefinitionDao {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
-    private static final String CHECK_EXISTS_BY_ID_SQL_TEMPLATE = "select exists(select id from feed_definitions where id = '%s')";
+    private static final String CHECK_EXISTS_BY_ID_SQL_TEMPLATE = "select exists(select id from feed_definitions where id = '%s' and is_deleted is false)";
 
     @SuppressWarnings("unused")
     public Boolean checkExists(String id) throws DataAccessException {
@@ -142,13 +142,13 @@ public class FeedDefinitionDao {
         return f;
     };
 
-    private static final String DELETE_BY_ID_SQL = "delete from feed_definitions where id = ? and username = ?";
+    private static final String MARK_FEED_AS_DELETED_BY_ID_SQL = "update feed_definitions set is_deleted = true where id = ? and username = ?";
 
     @SuppressWarnings("unused")
     public void deleteById(String username, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(DELETE_BY_ID_SQL, id, username);
+            rowsUpdated = jdbcTemplate.update(MARK_FEED_AS_DELETED_BY_ID_SQL, id, username);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "deleteById", e.getMessage(), username, id);
@@ -158,7 +158,7 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String FIND_ALL_SQL = "select * from feed_definitions";
+    private static final String FIND_ALL_SQL = "select * from feed_definitions where is_deleted is false";
 
     @SuppressWarnings("unused")
     public List<FeedDefinition> findAll() throws DataAccessException {
@@ -170,7 +170,7 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String FIND_BY_USER = "select * from feed_definitions where username = ?";
+    private static final String FIND_BY_USER = "select * from feed_definitions where username = ? and is_deleted is false";
 
     @SuppressWarnings("unused")
     public List<FeedDefinition> findByUser(String username) throws DataAccessException {
@@ -183,7 +183,7 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String FIND_IDENTS_BY_USER = "select distinct(feed_ident) from feed_definitions where username = ?";
+    private static final String FIND_IDENTS_BY_USER = "select distinct(feed_ident) from feed_definitions where username = ? and is_deleted is false";
 
     @SuppressWarnings("unused")
     public List<String> findIdentsByUser(String username) throws DataAccessException {
@@ -196,7 +196,7 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String FIND_BY_FEED_ID_SQL = "select * from feed_definitions where username = ? and id = ?";
+    private static final String FIND_BY_FEED_ID_SQL = "select * from feed_definitions where username = ? and id = ? and is_deleted is false";
 
     @SuppressWarnings("unused")
     public FeedDefinition findByFeedId(String username, Long id) throws DataAccessException {
@@ -209,7 +209,7 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String FIND_BY_TRANSPORT_IDENT_SQL = "select * from feed_definitions where transport_ident = ?";
+    private static final String FIND_BY_TRANSPORT_IDENT_SQL = "select * from feed_definitions where transport_ident = ? and is_deleted is false";
 
     @SuppressWarnings("unused")
     public FeedDefinition findByTransportIdent(String transportIdent) throws DataAccessException {
@@ -238,7 +238,7 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String CHECK_DEPLOYED_BY_ID_SQL_TEMPLATE = "select (last_deployed_timestamp is not null) from feed_definitions where id = %s and username = ?";
+    private static final String CHECK_DEPLOYED_BY_ID_SQL_TEMPLATE = "select (last_deployed_timestamp is not null) from feed_definitions where id = %s and username = ? and is_deleted is false";
 
     @SuppressWarnings("unused")
     public Boolean checkDeployed(String username, long id) throws DataAccessException {
