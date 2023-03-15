@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.lostsidewalk.buffy.FrameworkConfig.DISPLAY_CONFIG;
 import static com.lostsidewalk.buffy.FrameworkConfig.NOTIFICATION_CONFIG;
 import static java.util.Arrays.stream;
 import static java.util.Collections.singleton;
@@ -50,20 +51,22 @@ public class FrameworkConfigDao {
                     ps.setLong(1, userId);
                     rs = ps.executeQuery();
                     Map<String, String> notificationConfig = new HashMap<>();
+                    Map<String, String> displayConfig = new HashMap<>();
                     while (rs.next()) {
                         String _settingsGroup = rs.getString("settings_group");
                         String _attrName = rs.getString("attr_name");
                         String _attrValue = rs.getString("attr_value");
                         Map<String, String> m = null;
-                        //noinspection SwitchStatementWithTooFewBranches
                         switch (_settingsGroup) {
                             case NOTIFICATION_CONFIG -> m = notificationConfig;
+                            case DISPLAY_CONFIG -> m = displayConfig;
                         }
                         if (m != null) {
                             m.put(_attrName, _attrValue);
                         }
                     }
                     frameworkConfig.setNotifications(notificationConfig);
+                    frameworkConfig.setDisplay(displayConfig);
                 } finally {
                     closeQuietly(ps);
                     closeQuietly(rs);
@@ -112,6 +115,7 @@ public class FrameworkConfigDao {
             Long userId = frameworkConfig.getUserId();
             // insert the notification config; remove entries w/null values first
             rowsAffected = doSettingsGroup(userId, NOTIFICATION_CONFIG, cleanSettingsGroup(frameworkConfig.getNotifications()));
+            rowsAffected += doSettingsGroup(userId, DISPLAY_CONFIG, cleanSettingsGroup(frameworkConfig.getDisplay()));
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "save", e.getMessage(), frameworkConfig);
