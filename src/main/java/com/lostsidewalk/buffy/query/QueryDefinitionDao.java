@@ -187,7 +187,7 @@ public class QueryDefinitionDao {
     private static final String FIND_ALL_ACTIVE_SQL =
             "select * from query_definitions q " +
                     "join feed_definitions f on f.id = q.feed_id " +
-                    "where f.feed_status = 'ENABLED'";
+                    "where f.feed_status = 'ENABLED' and f.is_deleted is false";
 
     @SuppressWarnings("unused")
     public List<QueryDefinition> findAllActive() throws DataAccessException {
