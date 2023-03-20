@@ -311,10 +311,11 @@ public class StagingPostDao {
 
 //    private static final String FIND_PUB_PENDING_SQL = "select * from staging_posts where post_pub_status = 'PUB_PENDING'";
 
+    // Note: this query excludes feeds marked for deletion
     private static final String FIND_PUB_PENDING_BY_FEED_SQL =
             "select * from staging_posts s " +
             "join feed_definitions f on f.id = s.feed_id " +
-            "where f.feed_status = 'ENABLED' and f.username = ? " +
+            "where f.feed_status = 'ENABLED' and f.is_deleted is false and f.username = ? " +
             "and s.post_pub_status = 'PUB_PENDING' " +
             "and s.feed_id = ?";
 
@@ -332,6 +333,7 @@ public class StagingPostDao {
         return emptyList(); // jdbcTemplate.query(FIND_PUB_PENDING_SQL, STAGING_POST_ROW_MAPPER);
     }
 
+    // Note: this query does not exclude feeds marked for deletion
     private static final String FIND_DEPUB_PENDING_BY_FEED_SQL =
             "select * from staging_posts s " +
                     "join feed_definitions f on f.id = s.feed_id " +
@@ -424,11 +426,12 @@ public class StagingPostDao {
         }
     }
 
+    // Note: this query exclude feeds marked for deletion
     private static final String FIND_BY_USER_AND_FEED_ID_SQL_TEMPLATE =
             "select s.* from staging_posts s " +
                 "join feed_definitions f on f.id = s.feed_id " +
                 "join users u on u.name = f.username " +
-                "where u.name = ? and f.id in (%s) and (s.post_pub_status is null or s.post_pub_status != 'ARCHIVED')";
+                "where u.name = ? and f.is_deleted is false and f.id in (%s) and (s.post_pub_status is null or s.post_pub_status != 'ARCHIVED')";
 
     // non-archived only
     @SuppressWarnings("unused")
@@ -489,14 +492,17 @@ public class StagingPostDao {
 
     private static final String FIND_ALL_IDLE_SQL_TEMPLATE =
             "select username,id from staging_posts where " +
-                    "(post_read_status is null or post_read_status = 'READ') and " + // post status check
-                    "import_timestamp < current_timestamp - INTERVAL '%s DAYS'"; // post age check
+                    "( (post_read_status is null and import_timestamp < current_timestamp - INTERVAL '%s DAYS') or " + // post age check for unread
+                    "  (post_read_status = 'READ' and import_timestamp < current_timestamp - INTERVAL '%s DAYS')" + // post age check for read
+                    ") and post_pub_status != 'PUBLISHED'"; // post pub status check
 
     @SuppressWarnings("unused")
-    Map<String, List<Long>> findAllIdle(int maxAge) throws DataAccessException {
+    Map<String, List<Long>> findAllIdle(int maxUnreadAge, int maxReadAge) throws DataAccessException {
         try {
-            String maxAgeStr = Integer.toString(maxAge).replaceAll("[^\\d-]", EMPTY);
-            String sql = String.format(FIND_ALL_IDLE_SQL_TEMPLATE, maxAge);
+            // TODO: extract a utility method here
+            String maxUnreadAgeStr = Integer.toString(maxUnreadAge).replaceAll("[^\\d-]", EMPTY);
+            String maxAgeStr = Integer.toString(maxReadAge).replaceAll("[^\\d-]", EMPTY);
+            String sql = String.format(FIND_ALL_IDLE_SQL_TEMPLATE, maxUnreadAgeStr, maxAgeStr);
             return jdbcTemplate.query(sql, rs -> {
                 Map<String, List<Long>> m = new HashMap<>();
                 while (rs.next()) {
@@ -509,7 +515,7 @@ public class StagingPostDao {
             });
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findAllIdle", e.getMessage(), maxAge);
+            throw new DataAccessException(getClass().getSimpleName(), "findAllIdle", e.getMessage(), maxUnreadAge, maxReadAge);
         }
     }
 
@@ -782,5 +788,53 @@ public class StagingPostDao {
         if (!(rowsUpdated > 0)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updatePost attrs=" + simpleUpdateAttrs, updateArgs.toArray());
         }
+    }
+
+    private static final String ARCHIVE_BY_ID_SQL = "update staging_posts set post_pub_status = 'ARCHIVE' where id = ? and username = ?";
+
+    @SuppressWarnings("unused")
+    public void archiveById(String username, long id) throws DataAccessException, DataUpdateException {
+        int rowsUpdated;
+        try {
+            rowsUpdated = jdbcTemplate.update(ARCHIVE_BY_ID_SQL, id, username);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "archiveById", e.getMessage(), username, id);
+        }
+        if (!(rowsUpdated > 0)) {
+            throw new DataUpdateException(getClass().getSimpleName(), "archiveById", username, id);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public int archiveByIds(String username, List<Long> ids) throws DataAccessException, DataUpdateException {
+        int rowsUpdated;
+        try {
+            List<Object[]> params = ids.stream().map(i -> new Object[]{i, username}).collect(toList());
+            rowsUpdated = stream(jdbcTemplate.batchUpdate(ARCHIVE_BY_ID_SQL, params)).sum();
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "archiveByIds", e.getMessage(), username, ids);
+        }
+        if (!(rowsUpdated > 0)) {
+            throw new DataUpdateException(getClass().getSimpleName(), "archiveByIds", username, ids);
+        }
+
+        return rowsUpdated;
+    }
+
+    private static final String PURGE_ARCHIVED_POSTS_SQL = "delete from staging_posts where post_pub_status = 'ARCHIVED'";
+
+    @SuppressWarnings("unused")
+    public int purgeArchivePosts() throws DataAccessException, DataUpdateException {
+        int rowsUpdated;
+        try {
+            rowsUpdated = jdbcTemplate.update(PURGE_ARCHIVED_POSTS_SQL);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "purgeArchivedPosts", e.getMessage());
+        }
+
+        return rowsUpdated;
     }
 }

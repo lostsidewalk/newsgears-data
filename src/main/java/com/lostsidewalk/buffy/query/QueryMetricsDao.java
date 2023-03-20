@@ -156,4 +156,23 @@ public class QueryMetricsDao {
             throw new DataAccessException(getClass().getSimpleName(), "findByUsername", e.getMessage(), username);
         }
     }
+
+    //
+    //
+    //
+
+    private static final String PURGE_ORPHANED = "delete from query_metrics where id in (select qm.id from query_metrics qm left join query_definitions qd on qd.id = qm.query_id where qd.id is null)";
+
+    @SuppressWarnings("unused")
+    public int purgeOrphaned() throws DataAccessException {
+        int rowsUpdated;
+        try {
+            rowsUpdated = jdbcTemplate.update(PURGE_ORPHANED);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "purgeOrphaned", e.getMessage());
+        }
+
+        return rowsUpdated;
+    }
 }

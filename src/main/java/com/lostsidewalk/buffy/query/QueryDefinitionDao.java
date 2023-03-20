@@ -184,6 +184,7 @@ public class QueryDefinitionDao {
         }
     }
 
+    // Note: this query excludes feeds marked for deletion
     private static final String FIND_ALL_ACTIVE_SQL =
             "select * from query_definitions q " +
                     "join feed_definitions f on f.id = q.feed_id " +

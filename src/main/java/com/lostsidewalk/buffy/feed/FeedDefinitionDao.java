@@ -341,4 +341,23 @@ public class FeedDefinitionDao {
         Instant i = d != null ? OffsetDateTime.from(d.toInstant().atZone(ZONE_ID)).toInstant() : null;
         return i != null ? Timestamp.from(i) : null;
     }
+
+    //
+    //
+    //
+
+    private static final String PURGE_DELETED_SQL = "delete from feed_definitions where is_deleted is true";
+
+    @SuppressWarnings("unused")
+    public int purgeDeleted() throws DataAccessException {
+        int rowsUpdated;
+        try {
+            rowsUpdated = jdbcTemplate.update(PURGE_DELETED_SQL);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "purgeDeleted", e.getMessage());
+        }
+
+        return rowsUpdated;
+    }
 }
