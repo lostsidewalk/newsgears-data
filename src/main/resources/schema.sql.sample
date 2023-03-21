@@ -35,7 +35,7 @@ create table feed_definitions (
     feed_title varchar(512) not null,
     feed_desc varchar(1024),
     feed_generator varchar(512),
-    transport_ident varchar(256) not null,
+    transport_ident varchar(256) unique not null,
     username varchar(100) not null references users(name) on delete cascade,
     feed_status varchar(64) not null,
     export_config json,
