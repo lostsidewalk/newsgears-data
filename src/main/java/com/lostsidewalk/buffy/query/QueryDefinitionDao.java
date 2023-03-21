@@ -27,8 +27,6 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 @Component
 public class QueryDefinitionDao {
 
-    private static final Gson GSON = new Gson();
-
     @Autowired
     JdbcTemplate jdbcTemplate;
 
@@ -72,7 +70,7 @@ public class QueryDefinitionDao {
                         ps.setString(4, queryDefinition.getQueryImageUrl());
                         ps.setString(5, queryDefinition.getQueryText());
                         ps.setString(6, queryDefinition.getQueryType());
-                        ps.setString(7, ofNullable(queryDefinition.getQueryConfig()).map(GSON::toJson).orElse(null));
+                        ps.setString(7, ofNullable(queryDefinition.getQueryConfig()).map(Object::toString).orElse(null));
 
                         return ps;
                     }, keyHolder);
