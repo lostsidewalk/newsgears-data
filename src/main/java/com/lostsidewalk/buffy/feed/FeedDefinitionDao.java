@@ -36,6 +36,18 @@ public class FeedDefinitionDao {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    private static final String REQUIRES_AUTHENTICATION_BY_TRANSPORT_IDENT_SQL = "select is_authenticated from feed_definitions where transport_ident = ?";
+
+    @SuppressWarnings("unused")
+    public Boolean requiresAuthentication(String transportIdent) throws DataAccessException {
+        try {
+            return jdbcTemplate.queryForObject(REQUIRES_AUTHENTICATION_BY_TRANSPORT_IDENT_SQL, new Object[] { transportIdent }, Boolean.class);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "requiresAuthentication", e.getMessage(), transportIdent);
+        }
+    }
+
     private static final String CHECK_EXISTS_BY_ID_SQL_TEMPLATE = "select exists(select id from feed_definitions where id = '%s' and is_deleted is false)";
 
     @SuppressWarnings("unused")
@@ -63,9 +75,10 @@ public class FeedDefinitionDao {
                     "language, " +
                     "feed_img_src, " +
                     "feed_img_transport_ident, " +
-                    "last_deployed_timestamp " +
+                    "last_deployed_timestamp, " +
+                    "is_authenticated " +
                     ") values " +
-                    "(?,?,?,?,?,?,?,cast(? as json),?,?,?,?,?)";
+                    "(?,?,?,?,?,?,?,cast(? as json),?,?,?,?,?,?)";
 
     @SuppressWarnings("unused")
     public Long add(FeedDefinition feedDefinition) throws DataAccessException, DataUpdateException {
@@ -89,6 +102,7 @@ public class FeedDefinitionDao {
                         ps.setString(11, feedDefinition.getFeedImgSrc());
                         ps.setString(12, feedDefinition.getFeedImgTransportIdent());
                         ps.setTimestamp(13, toTimestamp(feedDefinition.getLastDeployed()));
+                        ps.setBoolean(14, feedDefinition.getIsAuthenticated());
 
                         return ps;
                     }, keyHolder);
@@ -121,6 +135,7 @@ public class FeedDefinitionDao {
         String feedImgSrc = rs.getString("feed_img_src");
         String feedImgTransportIdent = rs.getString("feed_img_transport_ident");
         Timestamp lastDeployedTimestamp = rs.getTimestamp("last_deployed_timestamp");
+        Boolean isAuthenticated = rs.getBoolean("is_authenticated");
 
         FeedDefinition f = FeedDefinition.from(
                 feedIdent,
@@ -135,7 +150,8 @@ public class FeedDefinitionDao {
                 feedLanguage,
                 feedImgSrc,
                 feedImgTransportIdent,
-                lastDeployedTimestamp
+                lastDeployedTimestamp,
+                isAuthenticated
         );
         f.setId(id);
 
@@ -292,12 +308,14 @@ public class FeedDefinitionDao {
             "copyright = ?, " +
             "language = ?, " +
             "feed_img_src = ?, " +
-            "feed_img_transport_ident = ? " +
+            "feed_img_transport_ident = ?, " +
+            "is_authenticated = ? " +
         "where id = ? and username = ?";
 
     @SuppressWarnings("unused")
     public void updateFeed(String username, Long id, String feedIdent, String description, String title, String generator,
-                       Serializable exportConfig, String copyright, String language, String feedImgSrc) throws DataAccessException, DataUpdateException {
+                       Serializable exportConfig, String copyright, String language, String feedImgSrc, Boolean isAuthenticated)
+            throws DataAccessException, DataUpdateException {
         String feedImgTransportIdent = null;
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
@@ -317,6 +335,7 @@ public class FeedDefinitionDao {
                     language,
                     feedImgSrc,
                     feedImgTransportIdent,
+                    isAuthenticated,
                     id,
                     username
             );
