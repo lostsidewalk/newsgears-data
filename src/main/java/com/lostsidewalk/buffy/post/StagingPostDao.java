@@ -413,7 +413,11 @@ public class StagingPostDao {
         }
     }
 
-    private static final String FIND_BY_USER_SQL = "select * from staging_posts where username = ? and (post_pub_status is null or post_pub_status != 'ARCHIVED')";
+    private static final String FIND_BY_USER_SQL = "select s.* from staging_posts s " +
+            "join feed_definitions f on f.id = s.feed_id " +
+            "where (s.post_pub_status is null or s.post_pub_status != 'ARCHIVED') " +
+            "and f.username = ? " +
+            "and f.is_deleted is false";
 
     // non-archived only
     @SuppressWarnings("unused")
@@ -430,8 +434,10 @@ public class StagingPostDao {
     private static final String FIND_BY_USER_AND_FEED_ID_SQL_TEMPLATE =
             "select s.* from staging_posts s " +
                 "join feed_definitions f on f.id = s.feed_id " +
-                "join users u on u.name = f.username " +
-                "where u.name = ? and f.is_deleted is false and f.id in (%s) and (s.post_pub_status is null or s.post_pub_status != 'ARCHIVED')";
+                "where f.username = ? " +
+                "and f.is_deleted is false " +
+                "and f.id in (%s) " +
+                "and (s.post_pub_status is null or s.post_pub_status != 'ARCHIVED')";
 
     // non-archived only
     @SuppressWarnings("unused")
@@ -452,7 +458,11 @@ public class StagingPostDao {
         }
     }
 
-    private static final String FIND_ALL_UNPUBLISHED_SQL = "select * from staging_posts where is_published = false and (post_pub_status is null or post_pub_status != 'ARCHIVED')";
+    private static final String FIND_ALL_UNPUBLISHED_SQL = "select s.* from staging_posts s " +
+            "join feed_definitions f on f.id = s.feed_id " +
+            "where s.is_published = false " +
+            "and f.is_deleted is false " +
+            "and (s.post_pub_status is null or s.post_pub_status != 'ARCHIVED')";
 
     // non-archived only
     @SuppressWarnings("unused")
@@ -465,7 +475,12 @@ public class StagingPostDao {
         }
     }
 
-    private static final String FIND_UNPUBLISHED_BY_USER_SQL = "select * from staging_posts where username = ? and is_published = false and (post_pub_status is null or post_pub_status != 'ARCHIVED')";
+    private static final String FIND_UNPUBLISHED_BY_USER_SQL = "select s.* from staging_posts s " +
+            "join feed_definitions f on f.id = s.feed_id " +
+            "where f.username = ? " +
+            "and f.is_deleted is false" +
+            "and s.is_published is false " +
+            "and (s.post_pub_status is null or s.post_pub_status != 'ARCHIVED')";
 
     // non-archived only
     @SuppressWarnings("unused")
