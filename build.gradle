@@ -25,34 +25,34 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:2.0.5'
 
     // spring-boot-starter-data-jpa
-    api 'org.springframework.boot:spring-boot-starter-data-jpa:3.0.0'
+    api 'org.springframework.boot:spring-boot-starter-data-jpa:3.0.4'
     // spring-boot-starter-data-redis
-    api 'org.springframework.boot:spring-boot-starter-data-redis:3.0.0'
+    api 'org.springframework.boot:spring-boot-starter-data-redis:3.0.4'
     // commons-pool2
     api 'org.apache.commons:commons-pool2:2.11.1'
     // jedis
     api 'redis.clients:jedis:4.3.1'
     // ROAM RSS/Atom
-    api 'com.rometools:rome:1.18.0'
+    api 'com.rometools:rome:2.1.0'
     // json
-    api 'org.json:json:20220924'
+    api 'org.json:json:20230227'
 
     // gson
-    implementation 'com.google.code.gson:gson:2.10'
+    implementation 'com.google.code.gson:gson:2.10.1'
     // commons-lang
     implementation 'org.apache.commons:commons-lang3:3.12.0'
     // commons-collections4
     implementation 'org.apache.commons:commons-collections4:4.4'
     // postgresql driver
-    implementation 'org.postgresql:postgresql:42.5.1'
+    implementation 'org.postgresql:postgresql:42.5.4'
     // guava
     implementation 'com.google.guava:guava:31.1-jre'
 
     // lombok
-    compileOnly 'org.projectlombok:lombok:1.18.24'
-    annotationProcessor 'org.projectlombok:lombok:1.18.24'
-    testCompileOnly 'org.projectlombok:lombok:1.18.24'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.22'
+    compileOnly 'org.projectlombok:lombok:1.18.26'
+    annotationProcessor 'org.projectlombok:lombok:1.18.26'
+    testCompileOnly 'org.projectlombok:lombok:1.18.26'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.26'
 }
 
 publishing {

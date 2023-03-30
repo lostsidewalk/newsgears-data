@@ -21,6 +21,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -299,18 +300,7 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String UPDATE_BY_ID_SQL = "update feed_definitions set " +
-            "feed_ident = ?, " +
-            "feed_desc = ?, " +
-            "feed_title = ?, " +
-            "feed_generator = ?, " +
-            "export_config = ?::json, " +
-            "copyright = ?, " +
-            "language = ?, " +
-            "feed_img_src = ?, " +
-            "feed_img_transport_ident = ?, " +
-            "is_authenticated = ? " +
-        "where id = ? and username = ?";
+    private static final String UPDATE_BY_ID_SQL_TEMPLATE = "update feed_definitions set %s where id = ? and username = ?";
 
     @SuppressWarnings("unused")
     public void updateFeed(String username, Long id, String feedIdent, String description, String title, String generator,
@@ -323,22 +313,60 @@ public class FeedDefinitionDao {
         } catch (NoSuchAlgorithmException ignored) {
             // ignored
         }
+
+        StringBuilder sqlBuilder = new StringBuilder();
+        List<Object> sqlParams = new ArrayList<>();
+        if (feedIdent != null) {
+            sqlBuilder.append("feed_ident = ?, ");
+            sqlParams.add(feedIdent);
+        }
+        if (description != null) {
+            sqlBuilder.append("feed_desc = ?, ");
+            sqlParams.add(description);
+        }
+        if (title != null) {
+            sqlBuilder.append("feed_title = ?, ");
+            sqlParams.add(title);
+        }
+        if (generator != null) {
+            sqlBuilder.append("feed_generator = ?, ");
+            sqlParams.add(generator);
+        }
+        if (exportConfig != null) {
+            sqlBuilder.append("export_config = ?::json, ");
+            sqlParams.add(exportConfig);
+        }
+        if (copyright != null) {
+            sqlBuilder.append("copyright = ?, ");
+            sqlParams.add(copyright);
+        }
+        if (language != null) {
+            sqlBuilder.append("language = ?, ");
+            sqlParams.add(language);
+        }
+        if (feedImgSrc != null) {
+            sqlBuilder.append("feed_img_src = ?, ");
+            sqlParams.add(feedImgSrc);
+        }
+        if (feedImgTransportIdent != null) {
+            sqlBuilder.append("feed_img_transport_ident = ?, ");
+            sqlParams.add(feedImgTransportIdent);
+        }
+        if (isAuthenticated != null) {
+            sqlBuilder.append("is_authenticated = ? ");
+            sqlParams.add(isAuthenticated);
+        }
+
+        if (sqlParams.isEmpty()) {
+            return; // no updates required, return quietly
+        }
+
+        sqlParams.add(id);
+        sqlParams.add(username);
+
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(UPDATE_BY_ID_SQL,
-                    feedIdent,
-                    description,
-                    title,
-                    generator,
-                    exportConfig,
-                    copyright,
-                    language,
-                    feedImgSrc,
-                    feedImgTransportIdent,
-                    isAuthenticated,
-                    id,
-                    username
-            );
+            rowsUpdated = jdbcTemplate.update(String.format(UPDATE_BY_ID_SQL_TEMPLATE, sqlBuilder), sqlParams.toArray());
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "updateFeed", e.getMessage(),
