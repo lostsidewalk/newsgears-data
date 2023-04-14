@@ -200,19 +200,6 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String FIND_IDENTS_BY_USER = "select distinct(feed_ident) from feed_definitions where username = ? and is_deleted is false";
-
-    @SuppressWarnings("unused")
-    public List<String> findIdentsByUser(String username) throws DataAccessException {
-        try {
-            List<String> results = jdbcTemplate.query(FIND_IDENTS_BY_USER, new Object[]{username}, (rs, rowNum) -> rs.getString("feed_ident"));
-            return results.isEmpty() ? null : results;
-        } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findIdentsByUser", e.getMessage(), username);
-        }
-    }
-
     private static final String FIND_BY_FEED_ID_SQL = "select * from feed_definitions where username = ? and id = ? and is_deleted is false";
 
     @SuppressWarnings("unused")
