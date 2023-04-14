@@ -841,7 +841,7 @@ public class StagingPostDao {
     private static final String PURGE_ARCHIVED_POSTS_SQL = "delete from staging_posts where post_pub_status = 'ARCHIVED'";
 
     @SuppressWarnings("unused")
-    public int purgeArchivePosts() throws DataAccessException, DataUpdateException {
+    public int purgeArchivePosts() throws DataAccessException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(PURGE_ARCHIVED_POSTS_SQL);
