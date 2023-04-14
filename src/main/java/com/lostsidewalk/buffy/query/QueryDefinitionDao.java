@@ -1,7 +1,6 @@
 package com.lostsidewalk.buffy.query;
 
 import com.google.common.collect.Lists;
-import com.google.gson.Gson;
 import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.DataUpdateException;
 import lombok.extern.slf4j.Slf4j;
@@ -123,13 +122,13 @@ public class QueryDefinitionDao {
         return q;
     };
 
-    private static final String DELETE_BY_ID_SQL = "delete from query_definitions where id = ?";
+    private static final String DELETE_BY_ID_SQL = "delete from query_definitions where username = ? and feed_id = ? and id = ?";
 
     @SuppressWarnings("unused")
-    public void deleteById(long id) throws DataAccessException, DataUpdateException {
+    public void deleteById(String username, long feedId, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(DELETE_BY_ID_SQL, id);
+            rowsUpdated = jdbcTemplate.update(DELETE_BY_ID_SQL, username, feedId, id);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "deleteById", e.getMessage(), id);
