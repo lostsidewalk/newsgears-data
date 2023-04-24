@@ -4,6 +4,7 @@
 [![Issues][issues-shield]][issues-url]
 [![License][license-shield]][license-url]
 
+<a name="readme-top"></a>
 
 <!-- PROJECT LOGO -->
 <br />
@@ -59,7 +60,7 @@ FeedGears is an RSS aggregator
 
 The cloud-hosted version, www.feedgears.com, tracks thousands of feeds daily on behalf of our users. We import tens of thousands or articles, and organize and present them to people around the world to read, search, filter, etc. in a highly customizable and accessible way. Since FeedGears is entirely free, you can host your own instance using pre-built containers, using the instructions located here.
 
-This repository contains the Java classes used to store and retrieve model data in a JDBC data source.
+This repository contains the Java classes used to store and retrieve model data in a JDBC data source, supporting the following packages:
 
 <ul>
     <li>auth</li>
@@ -78,9 +79,9 @@ For more information about FeedGears, see the parent project repository at: http
 
 ### Built With
 
-newsgears-data is a Java 19 library package, built with the following dependencies:
+newsgears-data is a Java 19 library package, built with the following dependencies: 
 
-API Dependencies:
+API Dependencies: 
 <ul>
     <li>com.lostsidewalk.newsgears:newsgears-model</li>
     <li>org.springframework.boot:spring-boot-starter-data-jpa:3.0.4</li>
@@ -95,10 +96,10 @@ Implementation Dependencies:
 <ul>
     <li>org.slf4j:slf4j-api:2.0.5</li>
     <li>com.google.code.gson:gson:2.10.1</li>
-    <li>implementation 'org.apache.commons:commons-lang3:3.12.0'</li>
-    <li>implementation 'org.apache.commons:commons-collections4:4.4</li>
-    <li>implementation 'org.postgresql:postgresql:42.5.4</li>
-    <li>implementation 'com.google.guava:guava:31.1-jre</li>
+    <li>org.apache.commons:commons-lang3:3.12.0</li>
+    <li>org.apache.commons:commons-collections4:4.4</li>
+    <li>org.postgresql:postgresql:42.5.4</li>
+    <li>com.google.guava:guava:31.1-jre</li>
 </ul>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
