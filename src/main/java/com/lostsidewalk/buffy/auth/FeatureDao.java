@@ -1,5 +1,6 @@
-package com.lostsidewalk.buffy;
+package com.lostsidewalk.buffy.auth;
 
+import com.lostsidewalk.buffy.DataAccessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;

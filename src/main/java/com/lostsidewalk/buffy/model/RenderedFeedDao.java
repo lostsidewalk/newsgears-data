@@ -1,5 +1,6 @@
-package com.lostsidewalk.buffy;
+package com.lostsidewalk.buffy.model;
 
+import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.model.RenderedATOMFeed;
 import com.lostsidewalk.buffy.model.RenderedRSSFeed;
 import lombok.extern.slf4j.Slf4j;

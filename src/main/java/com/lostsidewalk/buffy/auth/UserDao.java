@@ -1,6 +1,9 @@
-package com.lostsidewalk.buffy;
+package com.lostsidewalk.buffy.auth;
 
 import com.google.common.collect.ImmutableMap;
+import com.lostsidewalk.buffy.AbstractDao;
+import com.lostsidewalk.buffy.DataAccessException;
+import com.lostsidewalk.buffy.DataUpdateException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;

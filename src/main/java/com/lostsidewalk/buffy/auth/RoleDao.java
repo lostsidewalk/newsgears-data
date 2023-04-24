@@ -1,5 +1,7 @@
-package com.lostsidewalk.buffy;
+package com.lostsidewalk.buffy.auth;
 
+import com.lostsidewalk.buffy.AbstractDao;
+import com.lostsidewalk.buffy.auth.Role;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
