@@ -29,6 +29,7 @@ public class QueryMetricsDao {
                     "redirect_http_status_code," +
                     "redirect_http_status_message," +
                     "import_timestamp," +
+                    "import_schedule," +
                     "import_ct," +
                     "persist_ct," +
                     "skip_ct," +
@@ -36,7 +37,7 @@ public class QueryMetricsDao {
                     "error_type," +
                     "error_detail" +
                     ") values " +
-                    "(?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                    "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
     @SuppressWarnings("unused")
     public void add(QueryMetrics queryMetrics) throws DataAccessException, DataUpdateException {
@@ -50,6 +51,7 @@ public class QueryMetricsDao {
                     queryMetrics.getRedirectHttpStatusCode(),
                     queryMetrics.getRedirectHttpStatusMessage(),
                     queryMetrics.getImportTimestamp(),
+                    queryMetrics.getImportSchedule(),
                     queryMetrics.getImportCt(),
                     queryMetrics.getPersistCt(),
                     queryMetrics.getSkipCt(),
@@ -81,6 +83,8 @@ public class QueryMetricsDao {
         String redirectHttpStatusMessage = rs.getString("redirect_http_status_message");
         // import timestamp
         Timestamp importTimestamp = rs.getTimestamp("import_timestamp");
+        // import schedule
+        String importSchedule = rs.getString("import_schedule");
         // import ct
         Integer importCt = rs.getInt("import_ct");
         // persist ct
@@ -102,6 +106,7 @@ public class QueryMetricsDao {
                 redirectHttpStatusCode,
                 redirectHttpStatusMessage,
                 importTimestamp,
+                importSchedule,
                 importCt
         );
         q.setId(id);
@@ -138,12 +143,12 @@ public class QueryMetricsDao {
         }
     }
 
-    private static final String FIND_BY_QUERY_ID_SQL = "select * from query_metrics where query_id = ?";
+    private static final String FIND_BY_QUERY_ID_SQL = "select * from query_metrics qm join query_definitions qd on qd.id = qm.query_id where qd.id = ? and qd.username = ?";
 
     @SuppressWarnings("unused")
     public List<QueryMetrics> findByQueryId(String username, Long queryId) throws DataAccessException {
         try {
-            return jdbcTemplate.query(FIND_BY_QUERY_ID_SQL, new Object[] { username, queryId }, QUERY_METRICS_ROW_MAPPER);
+            return jdbcTemplate.query(FIND_BY_QUERY_ID_SQL, new Object[] { queryId, username }, QUERY_METRICS_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "findByQueryId", e.getMessage(), username, queryId);

@@ -29,16 +29,15 @@ public class QueryDefinitionDao {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
-    private static final String CHECK_EXISTS_BY_ID_SQL_TEMPLATE = "select exists(select id from query_definitions where id = '%s')";
+    private static final String CHECK_EXISTS_BY_QUERY_TEXT_SQL = "select exists(select id from query_definitions where username = ? and query_text = ?)";
 
     @SuppressWarnings("unused")
-    public Boolean checkExists(String id) throws DataAccessException {
+    public Boolean checkExists(String username, String queryText) throws DataAccessException {
         try {
-            String sql = String.format(CHECK_EXISTS_BY_ID_SQL_TEMPLATE, id);
-            return jdbcTemplate.queryForObject(sql, null, Boolean.class);
+            return jdbcTemplate.queryForObject(CHECK_EXISTS_BY_QUERY_TEXT_SQL, new Object[] { username, queryText }, Boolean.class);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "checkExists", e.getMessage(), id);
+            throw new DataAccessException(getClass().getSimpleName(), "checkExists", e.getMessage(), username, queryText);
         }
     }
 
@@ -50,9 +49,10 @@ public class QueryDefinitionDao {
                     "query_image_url," +
                     "query_text," +
                     "query_type," +
+                    "import_schedule," +
                     "query_config" +
                     ") values " +
-                    "(?,?,?,?,?,?,?::json)";
+                    "(?,?,?,?,?,?,?,?::json)";
 
     @SuppressWarnings("unused")
     public Long add(QueryDefinition queryDefinition) throws DataAccessException, DataUpdateException {
@@ -69,7 +69,8 @@ public class QueryDefinitionDao {
                         ps.setString(4, queryDefinition.getQueryImageUrl());
                         ps.setString(5, queryDefinition.getQueryText());
                         ps.setString(6, queryDefinition.getQueryType());
-                        ps.setString(7, ofNullable(queryDefinition.getQueryConfig()).map(Object::toString).orElse(null));
+                        ps.setString(7, queryDefinition.getImportSchedule());
+                        ps.setString(8, ofNullable(queryDefinition.getQueryConfig()).map(Object::toString).orElse(null));
 
                         return ps;
                     }, keyHolder);
@@ -102,6 +103,7 @@ public class QueryDefinitionDao {
         String queryImageUrl = rs.getString("query_image_url");
         String queryText = rs.getString("query_text");
         String queryType = rs.getString("query_type");
+        String importSchedule = rs.getString("import_schedule");
         String queryConfig = null;
         PGobject queryConfigObj = (PGobject) rs.getObject("query_config");
         if (queryConfigObj != null) {
@@ -115,6 +117,7 @@ public class QueryDefinitionDao {
                 queryImageUrl,
                 queryText,
                 queryType,
+                importSchedule,
                 queryConfig
         );
         q.setId(id);
@@ -269,6 +272,7 @@ public class QueryDefinitionDao {
             "query_image_url = ?, " +
             "query_text = ?, " +
             "query_type = ?, " +
+            "import_schedule = ?, " +
             "query_config = ?::json " +
             "where id = ?";
 
@@ -279,6 +283,18 @@ public class QueryDefinitionDao {
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "updateQueries", e.getMessage(), queryParams);
+        }
+    }
+
+    private static final String UPDATE_IMPORT_SCHEDULE_SQL = "update query_definitions set import_schedule = ? where id = ?";
+
+    @SuppressWarnings("unused")
+    public void updateImportSchedules(List<Object[]> queryParams) throws DataAccessException {
+        try {
+            jdbcTemplate.batchUpdate(UPDATE_IMPORT_SCHEDULE_SQL, queryParams);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "updateImportSchedules", e.getMessage(), queryParams);
         }
     }
 
