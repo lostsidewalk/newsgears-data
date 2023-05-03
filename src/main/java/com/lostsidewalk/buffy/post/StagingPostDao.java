@@ -458,6 +458,24 @@ public class StagingPostDao {
         }
     }
 
+    private static final String FIND_BY_USER_AND_QUERY_ID_SQL = "select s.* from staging_posts s " +
+            "join feed_definitions f on f.id = s.feed_id " +
+            "where (s.post_pub_status is null or s.post_pub_status != 'ARCHIVED') " +
+            "and f.username = ? " +
+            "and f.is_deleted is false " +
+            "and s.query_id = ?";
+
+    // non-archived only
+    @SuppressWarnings("unused")
+    public List<StagingPost> findByUserAndQueryId(String username, Long queryId) throws DataAccessException {
+        try {
+            return jdbcTemplate.query(FIND_BY_USER_AND_QUERY_ID_SQL, new Object[]{ username, queryId }, STAGING_POST_ROW_MAPPER);
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "findByUserAndQueryId", e.getMessage(), username, queryId);
+        }
+    }
+
     private static final String FIND_ALL_UNPUBLISHED_SQL = "select s.* from staging_posts s " +
             "join feed_definitions f on f.id = s.feed_id " +
             "where s.is_published = false " +
@@ -838,13 +856,14 @@ public class StagingPostDao {
         return rowsUpdated;
     }
 
-    private static final String PURGE_ARCHIVED_POSTS_SQL = "delete from staging_posts where post_pub_status = 'ARCHIVED'";
+    private static final String PURGE_ARCHIVED_POSTS_SQL_TEMPLATE = "delete from staging_posts where post_pub_status = 'ARCHIVED' and import_timestamp < current_timestamp - INTERVAL '%s DAYS'";
 
     @SuppressWarnings("unused")
-    public int purgeArchivePosts() throws DataAccessException {
+    public int purgeArchivedPosts(int maxAge) throws DataAccessException {
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(PURGE_ARCHIVED_POSTS_SQL);
+            String sql = String.format(PURGE_ARCHIVED_POSTS_SQL_TEMPLATE, maxAge);
+            rowsUpdated = jdbcTemplate.update(sql);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "purgeArchivedPosts", e.getMessage());
