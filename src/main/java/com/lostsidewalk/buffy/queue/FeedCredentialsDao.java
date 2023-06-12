@@ -1,4 +1,4 @@
-package com.lostsidewalk.buffy.feed;
+package com.lostsidewalk.buffy.queue;
 
 import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.DataUpdateException;

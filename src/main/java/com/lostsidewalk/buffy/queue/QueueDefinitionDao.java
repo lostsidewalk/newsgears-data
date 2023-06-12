@@ -1,9 +1,9 @@
-package com.lostsidewalk.buffy.feed;
+package com.lostsidewalk.buffy.queue;
 
 import com.google.gson.Gson;
 import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.DataUpdateException;
-import com.lostsidewalk.buffy.feed.FeedDefinition.FeedStatus;
+import com.lostsidewalk.buffy.queue.QueueDefinition.QueueStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.postgresql.util.PGobject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,19 +25,19 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import static com.lostsidewalk.buffy.feed.FeedDefinition.computeImageHash;
+import static com.lostsidewalk.buffy.queue.QueueDefinition.computeImageHash;
 import static java.util.Optional.ofNullable;
 
 @Slf4j
 @Component
-public class FeedDefinitionDao {
+public class QueueDefinitionDao {
 
     private static final Gson GSON = new Gson();
 
     @Autowired
     JdbcTemplate jdbcTemplate;
 
-    private static final String REQUIRES_AUTHENTICATION_BY_TRANSPORT_IDENT_SQL = "select is_authenticated from feed_definitions where transport_ident = ?";
+    private static final String REQUIRES_AUTHENTICATION_BY_TRANSPORT_IDENT_SQL = "select is_authenticated from queue_definitions where transport_ident = ?";
 
     @SuppressWarnings("unused")
     public Boolean requiresAuthentication(String transportIdent) throws DataAccessException {
@@ -49,7 +49,7 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String CHECK_EXISTS_BY_ID_SQL_TEMPLATE = "select exists(select id from feed_definitions where id = '%s' and is_deleted is false)";
+    private static final String CHECK_EXISTS_BY_ID_SQL_TEMPLATE = "select exists(select id from queue_definitions where id = '%s' and is_deleted is false)";
 
     @SuppressWarnings("unused")
     public Boolean checkExists(String id) throws DataAccessException {
@@ -62,95 +62,95 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String INSERT_FEED_DEFINITIONS_SQL =
-            "insert into feed_definitions (" +
-                    "feed_ident," +
-                    "feed_title," +
-                    "feed_desc," +
-                    "feed_generator," +
+    private static final String INSERT_queue_definitions_SQL =
+            "insert into queue_definitions (" +
+                    "queue_ident," +
+                    "queue_title," +
+                    "queue_desc," +
+                    "queue_feed_generator," +
                     "transport_ident," +
                     "username," +
-                    "feed_status," +
+                    "queue_status," +
                     "export_config," +
                     "copyright," +
                     "language, " +
-                    "feed_img_src, " +
-                    "feed_img_transport_ident, " +
+                    "queue_img_src, " +
+                    "queue_img_transport_ident, " +
                     "last_deployed_timestamp, " +
                     "is_authenticated " +
                     ") values " +
                     "(?,?,?,?,?,?,?,cast(? as json),?,?,?,?,?,?)";
 
     @SuppressWarnings("unused")
-    public Long add(FeedDefinition feedDefinition) throws DataAccessException, DataUpdateException {
+    public Long add(QueueDefinition queueDefinition) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         KeyHolder keyHolder;
         try {
             keyHolder = new GeneratedKeyHolder();
             rowsUpdated = jdbcTemplate.update(
                     conn -> {
-                        PreparedStatement ps = conn.prepareStatement(INSERT_FEED_DEFINITIONS_SQL, new String[] { "id" });
-                        ps.setString(1, feedDefinition.getIdent());
-                        ps.setString(2, feedDefinition.getTitle());
-                        ps.setString(3, feedDefinition.getDescription());
-                        ps.setString(4, feedDefinition.getGenerator());
-                        ps.setString(5, feedDefinition.getTransportIdent());
-                        ps.setString(6, feedDefinition.getUsername());
-                        ps.setString(7, feedDefinition.getFeedStatus().toString());
-                        ps.setString(8, ofNullable(feedDefinition.getExportConfig()).map(GSON::toJson).orElse(null));
-                        ps.setString(9, feedDefinition.getCopyright());
-                        ps.setString(10, feedDefinition.getLanguage());
-                        ps.setString(11, feedDefinition.getFeedImgSrc());
-                        ps.setString(12, feedDefinition.getFeedImgTransportIdent());
-                        ps.setTimestamp(13, toTimestamp(feedDefinition.getLastDeployed()));
-                        ps.setBoolean(14, feedDefinition.getIsAuthenticated());
+                        PreparedStatement ps = conn.prepareStatement(INSERT_queue_definitions_SQL, new String[] { "id" });
+                        ps.setString(1, queueDefinition.getIdent());
+                        ps.setString(2, queueDefinition.getTitle());
+                        ps.setString(3, queueDefinition.getDescription());
+                        ps.setString(4, queueDefinition.getGenerator());
+                        ps.setString(5, queueDefinition.getTransportIdent());
+                        ps.setString(6, queueDefinition.getUsername());
+                        ps.setString(7, queueDefinition.getQueueStatus().toString());
+                        ps.setString(8, ofNullable(queueDefinition.getExportConfig()).map(GSON::toJson).orElse(null));
+                        ps.setString(9, queueDefinition.getCopyright());
+                        ps.setString(10, queueDefinition.getLanguage());
+                        ps.setString(11, queueDefinition.getQueueImgSrc());
+                        ps.setString(12, queueDefinition.getQueueImgTransportIdent());
+                        ps.setTimestamp(13, toTimestamp(queueDefinition.getLastDeployed()));
+                        ps.setBoolean(14, queueDefinition.getIsAuthenticated());
 
                         return ps;
                     }, keyHolder);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "add", e.getMessage(), feedDefinition);
+            throw new DataAccessException(getClass().getSimpleName(), "add", e.getMessage(), queueDefinition);
         }
         if (!(rowsUpdated > 0)) {
-            throw new DataUpdateException(getClass().getSimpleName(), "add", feedDefinition);
+            throw new DataUpdateException(getClass().getSimpleName(), "add", queueDefinition);
         }
         return keyHolder.getKeyAs(Long.class);
     }
 
-    final RowMapper<FeedDefinition> FEED_DEFINITION_ROW_MAPPER = (rs, rowNum) -> {
+    final RowMapper<QueueDefinition> QUEUE_DEFINITION_ROW_MAPPER = (rs, rowNum) -> {
         Long id = rs.getLong("id");
-        String feedIdent = rs.getString("feed_ident");
-        String feedTitle = rs.getString("feed_title");
-        String feedDesc = rs.getString("feed_desc");
-        String feedGenerator = rs.getString("feed_generator");
+        String queueIdent = rs.getString("queue_ident");
+        String queueTitle = rs.getString("queue_title");
+        String queueDesc = rs.getString("queue_desc");
+        String queueFeedGenerator = rs.getString("queue_feed_generator");
         String transportIdent = rs.getString("transport_ident");
         String username = rs.getString("username");
-        String feedStatus = rs.getString("feed_status");
+        String queueStatus = rs.getString("queue_status");
         String exportConfig = null;
         PGobject exportConfigObj = (PGobject) rs.getObject("export_config");
         if (exportConfigObj != null) {
             exportConfig = exportConfigObj.getValue();
         }
-        String feedCopyright = rs.getString("copyright");
-        String feedLanguage = rs.getString("language");
-        String feedImgSrc = rs.getString("feed_img_src");
-        String feedImgTransportIdent = rs.getString("feed_img_transport_ident");
+        String queueFeedCopyright = rs.getString("copyright");
+        String queueFeedLanguage = rs.getString("language");
+        String queueImgSrc = rs.getString("queue_img_src");
+        String queueImgTransportIdent = rs.getString("queue_img_transport_ident");
         Timestamp lastDeployedTimestamp = rs.getTimestamp("last_deployed_timestamp");
         Boolean isAuthenticated = rs.getBoolean("is_authenticated");
 
-        FeedDefinition f = FeedDefinition.from(
-                feedIdent,
-                feedTitle,
-                feedDesc,
-                feedGenerator,
+        QueueDefinition f = QueueDefinition.from(
+                queueIdent,
+                queueTitle,
+                queueDesc,
+                queueFeedGenerator,
                 transportIdent,
                 username,
-                FeedStatus.valueOf(feedStatus),
+                QueueStatus.valueOf(queueStatus),
                 exportConfig,
-                feedCopyright,
-                feedLanguage,
-                feedImgSrc,
-                feedImgTransportIdent,
+                queueFeedCopyright,
+                queueFeedLanguage,
+                queueImgSrc,
+                queueImgTransportIdent,
                 lastDeployedTimestamp,
                 isAuthenticated
         );
@@ -159,13 +159,13 @@ public class FeedDefinitionDao {
         return f;
     };
 
-    private static final String MARK_FEED_AS_DELETED_BY_ID_SQL = "update feed_definitions set is_deleted = true where id = ? and username = ?";
+    private static final String MARK_QUEUE_AS_DELETED_BY_ID_SQL = "update queue_definitions set is_deleted = true where id = ? and username = ?";
 
     @SuppressWarnings("unused")
     public void deleteById(String username, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(MARK_FEED_AS_DELETED_BY_ID_SQL, id, username);
+            rowsUpdated = jdbcTemplate.update(MARK_QUEUE_AS_DELETED_BY_ID_SQL, id, username);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "deleteById", e.getMessage(), username, id);
@@ -175,24 +175,24 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String FIND_ALL_SQL = "select * from feed_definitions where is_deleted is false";
+    private static final String FIND_ALL_SQL = "select * from queue_definitions where is_deleted is false";
 
     @SuppressWarnings("unused")
-    public List<FeedDefinition> findAll() throws DataAccessException {
+    public List<QueueDefinition> findAll() throws DataAccessException {
         try {
-            return jdbcTemplate.query(FIND_ALL_SQL, FEED_DEFINITION_ROW_MAPPER);
+            return jdbcTemplate.query(FIND_ALL_SQL, QUEUE_DEFINITION_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "findAll", e.getMessage());
         }
     }
 
-    private static final String FIND_BY_USER = "select * from feed_definitions where username = ? and is_deleted is false";
+    private static final String FIND_BY_USER = "select * from queue_definitions where username = ? and is_deleted is false";
 
     @SuppressWarnings("unused")
-    public List<FeedDefinition> findByUser(String username) throws DataAccessException {
+    public List<QueueDefinition> findByUser(String username) throws DataAccessException {
         try {
-            List<FeedDefinition> results = jdbcTemplate.query(FIND_BY_USER, new Object[]{username}, FEED_DEFINITION_ROW_MAPPER);
+            List<QueueDefinition> results = jdbcTemplate.query(FIND_BY_USER, new Object[]{username}, QUEUE_DEFINITION_ROW_MAPPER);
             return results.isEmpty() ? null : results;
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
@@ -200,12 +200,12 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String FIND_BY_FEED_ID_SQL = "select * from feed_definitions where username = ? and id = ? and is_deleted is false";
+    private static final String FIND_BY_QUEUE_ID_SQL = "select * from queue_definitions where username = ? and id = ? and is_deleted is false";
 
     @SuppressWarnings("unused")
-    public FeedDefinition findByFeedId(String username, Long id) throws DataAccessException {
+    public QueueDefinition findByQueueId(String username, Long id) throws DataAccessException {
         try {
-            List<FeedDefinition> results = jdbcTemplate.query(FIND_BY_FEED_ID_SQL, new Object[] { username, id }, FEED_DEFINITION_ROW_MAPPER);
+            List<QueueDefinition> results = jdbcTemplate.query(FIND_BY_QUEUE_ID_SQL, new Object[] { username, id }, QUEUE_DEFINITION_ROW_MAPPER);
             return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
@@ -213,12 +213,12 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String FIND_BY_TRANSPORT_IDENT_SQL = "select * from feed_definitions where transport_ident = ? and is_deleted is false";
+    private static final String FIND_BY_TRANSPORT_IDENT_SQL = "select * from queue_definitions where transport_ident = ? and is_deleted is false";
 
     @SuppressWarnings("unused")
-    public FeedDefinition findByTransportIdent(String transportIdent) throws DataAccessException {
+    public QueueDefinition findByTransportIdent(String transportIdent) throws DataAccessException {
         try {
-            List<FeedDefinition> results = jdbcTemplate.query(FIND_BY_TRANSPORT_IDENT_SQL, new Object[] { transportIdent }, FEED_DEFINITION_ROW_MAPPER);
+            List<QueueDefinition> results = jdbcTemplate.query(FIND_BY_TRANSPORT_IDENT_SQL, new Object[] { transportIdent }, QUEUE_DEFINITION_ROW_MAPPER);
             return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
@@ -226,23 +226,23 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String UPDATE_LAST_DEPLOYED_TIMESTAMP_SQL = "update feed_definitions set last_deployed_timestamp = ? where id = ? and username = ?";
+    private static final String UPDATE_LAST_DEPLOYED_TIMESTAMP_SQL = "update queue_definitions set last_deployed_timestamp = ? where id = ? and username = ?";
 
     @SuppressWarnings("unused")
-    public void updateLastDeployed(String username, Long feedId, Date lastDeployed) throws DataAccessException, DataUpdateException {
+    public void updateLastDeployed(String username, Long queueId, Date lastDeployed) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(UPDATE_LAST_DEPLOYED_TIMESTAMP_SQL, toTimestamp(lastDeployed), feedId, username);
+            rowsUpdated = jdbcTemplate.update(UPDATE_LAST_DEPLOYED_TIMESTAMP_SQL, toTimestamp(lastDeployed), queueId, username);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "updateLastDeployed", e.getMessage(), username, feedId, lastDeployed);
+            throw new DataAccessException(getClass().getSimpleName(), "updateLastDeployed", e.getMessage(), username, queueId, lastDeployed);
         }
         if (!(rowsUpdated > 0)) {
-            throw new DataUpdateException(getClass().getSimpleName(), "updateLastDeployed", username, feedId, lastDeployed);
+            throw new DataUpdateException(getClass().getSimpleName(), "updateLastDeployed", username, queueId, lastDeployed);
         }
     }
 
-    private static final String CHECK_DEPLOYED_BY_ID_SQL_TEMPLATE = "select (last_deployed_timestamp is not null) from feed_definitions where id = %s and username = ? and is_deleted is false";
+    private static final String CHECK_DEPLOYED_BY_ID_SQL_TEMPLATE = "select (last_deployed_timestamp is not null) from queue_definitions where id = %s and username = ? and is_deleted is false";
 
     @SuppressWarnings("unused")
     public Boolean checkDeployed(String username, long id) throws DataAccessException {
@@ -255,7 +255,7 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String CLEAR_LAST_DEPLOYED_BY_ID_SQL = "update feed_definitions set last_deployed_timestamp = null where id = ? and username = ?";
+    private static final String CLEAR_LAST_DEPLOYED_BY_ID_SQL = "update queue_definitions set last_deployed_timestamp = null where id = ? and username = ?";
 
     @SuppressWarnings("unused")
     public void clearLastDeployed(String username, long id) throws DataAccessException, DataUpdateException {
@@ -271,23 +271,23 @@ public class FeedDefinitionDao {
         }
     }
 
-    private static final String UPDATE_FEED_STATUS_BY_ID = "update feed_definitions set feed_status = ? where id = ? and username = ?";
+    private static final String UPDATE_queue_status_BY_ID = "update queue_definitions set queue_status = ? where id = ? and username = ?";
 
     @SuppressWarnings("unused")
-    public void updateFeedStatus(String username, long id, FeedStatus feedStatus) throws DataAccessException, DataUpdateException {
+    public void updateQueueStatus(String username, long id, QueueStatus queueStatus) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(UPDATE_FEED_STATUS_BY_ID, feedStatus.toString(), id, username);
+            rowsUpdated = jdbcTemplate.update(UPDATE_queue_status_BY_ID, queueStatus.toString(), id, username);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "updateFeedStatus", e.getMessage(), username, id, feedStatus);
+            throw new DataAccessException(getClass().getSimpleName(), "updateQueueStatus", e.getMessage(), username, id, queueStatus);
         }
         if (!(rowsUpdated > 0)) {
-            throw new DataUpdateException(getClass().getSimpleName(), "updateFeedStatus", username, id, feedStatus);
+            throw new DataUpdateException(getClass().getSimpleName(), "updateQueueStatus", username, id, queueStatus);
         }
     }
 
-    private static final String UPDATE_BY_ID_SQL_TEMPLATE = "update feed_definitions set %s where id = ? and username = ?";
+    private static final String UPDATE_BY_ID_SQL_TEMPLATE = "update queue_definitions set %s where id = ? and username = ?";
 
     @SuppressWarnings("unused")
     public void updateFeed(String username, Long id, String feedIdent, String description, String title, String generator,
@@ -304,19 +304,19 @@ public class FeedDefinitionDao {
         StringBuilder sqlBuilder = new StringBuilder();
         List<Object> sqlParams = new ArrayList<>();
         if (feedIdent != null) {
-            sqlBuilder.append("feed_ident = ?, ");
+            sqlBuilder.append("queue_ident = ?, ");
             sqlParams.add(feedIdent);
         }
         if (description != null) {
-            sqlBuilder.append("feed_desc = ?, ");
+            sqlBuilder.append("queue_desc = ?, ");
             sqlParams.add(description);
         }
         if (title != null) {
-            sqlBuilder.append("feed_title = ?, ");
+            sqlBuilder.append("queue_title = ?, ");
             sqlParams.add(title);
         }
         if (generator != null) {
-            sqlBuilder.append("feed_generator = ?, ");
+            sqlBuilder.append("queue_feed_generator = ?, ");
             sqlParams.add(generator);
         }
         if (exportConfig != null) {
@@ -332,11 +332,11 @@ public class FeedDefinitionDao {
             sqlParams.add(language);
         }
         if (feedImgSrc != null) {
-            sqlBuilder.append("feed_img_src = ?, ");
+            sqlBuilder.append("queue_img_src = ?, ");
             sqlParams.add(feedImgSrc);
         }
         if (feedImgTransportIdent != null) {
-            sqlBuilder.append("feed_img_transport_ident = ?, ");
+            sqlBuilder.append("queue_img_transport_ident = ?, ");
             sqlParams.add(feedImgTransportIdent);
         }
         if (isAuthenticated != null) {
@@ -380,7 +380,7 @@ public class FeedDefinitionDao {
     //
     //
 
-    private static final String PURGE_DELETED_SQL = "delete from feed_definitions where is_deleted is true";
+    private static final String PURGE_DELETED_SQL = "delete from queue_definitions where is_deleted is true";
 
     @SuppressWarnings("unused")
     public int purgeDeleted() throws DataAccessException {

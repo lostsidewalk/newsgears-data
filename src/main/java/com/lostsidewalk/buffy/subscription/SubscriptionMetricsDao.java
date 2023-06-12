@@ -1,4 +1,4 @@
-package com.lostsidewalk.buffy.query;
+package com.lostsidewalk.buffy.subscription;
 
 import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.DataUpdateException;
@@ -9,20 +9,22 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Optional.ofNullable;
 
 @Slf4j
 @Component
-public class QueryMetricsDao {
+public class SubscriptionMetricsDao {
 
     @Autowired
     JdbcTemplate jdbcTemplate;
 
-    private static final String INSERT_QUERY_METRICS_SQL =
-            "insert into query_metrics (" +
-                    "query_id," +
+    private static final String INSERT_SUBSCRIPTION_METRICS_SQL =
+            "insert into subscription_metrics (" +
+                    "subscription_id," +
                     "http_status_code," +
                     "http_status_message," +
                     "redirect_feed_url," +
@@ -40,11 +42,11 @@ public class QueryMetricsDao {
                     "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
     @SuppressWarnings("unused")
-    public void add(QueryMetrics queryMetrics) throws DataAccessException, DataUpdateException {
+    public void add(SubscriptionMetrics queryMetrics) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(INSERT_QUERY_METRICS_SQL,
-                    queryMetrics.getQueryId(),
+            rowsUpdated = jdbcTemplate.update(INSERT_SUBSCRIPTION_METRICS_SQL,
+                    queryMetrics.getSubscriptionId(),
                     queryMetrics.getHttpStatusCode(),
                     queryMetrics.getHttpStatusMessage(),
                     queryMetrics.getRedirectFeedUrl(),
@@ -69,9 +71,9 @@ public class QueryMetricsDao {
     }
 
     @SuppressWarnings("unused")
-    final RowMapper<QueryMetrics> QUERY_METRICS_ROW_MAPPER = (rs, rowNum) -> {
+    final RowMapper<SubscriptionMetrics> SUBSCRIPTION_METRICS_ROW_MAPPER = (rs, rowNum) -> {
         Long id = rs.getLong("id");
-        Long queryId = rs.getLong("query_id");
+        Long subscriptionId = rs.getLong("subscription_id");
         Integer httpStatusCode = rs.wasNull() ? null : rs.getInt("http_status_code");
         // http status message
         String httpStatusMessage = rs.getString("http_status_message");
@@ -98,8 +100,8 @@ public class QueryMetricsDao {
         // error detail
         String errorDetail = rs.getString("error_detail");
 
-        QueryMetrics q = QueryMetrics.from(
-                queryId,
+        SubscriptionMetrics q = SubscriptionMetrics.from(
+                subscriptionId,
                 httpStatusCode,
                 httpStatusMessage,
                 redirectFeedUrl,
@@ -113,65 +115,85 @@ public class QueryMetricsDao {
         q.setPersistCt(persistCt);
         q.setSkipCt(skipCt);
         q.setArchiveCt(archiveCt);
-        q.setErrorType(ofNullable(errorType).map(e -> QueryMetrics.QueryExceptionType.valueOf(errorType)).orElse(null)); // TODO: safety
+        q.setErrorType(ofNullable(errorType).map(e -> SubscriptionMetrics.QueryExceptionType.valueOf(errorType)).orElse(null)); // TODO: safety
         q.setErrorDetail(errorDetail);
 
         return q;
     };
 
-    private static final String FIND_ALL_SQL = "select * from query_metrics";
+    private static final String FIND_ALL_SQL = "select * from subscription_metrics";
 
     @SuppressWarnings("unused")
-    public List<QueryMetrics> findAll() throws DataAccessException {
+    public List<SubscriptionMetrics> findAll() throws DataAccessException {
         try {
-            return jdbcTemplate.query(FIND_ALL_SQL, QUERY_METRICS_ROW_MAPPER);
+            return jdbcTemplate.query(FIND_ALL_SQL, SUBSCRIPTION_METRICS_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "findAll", e.getMessage());
         }
     }
 
-    private static final String FIND_BY_FEED_ID_SQL = "select * from query_metrics qm join query_definitions qd on qd.id = qm.query_id where qd.feed_id = ? and qd.username = ?";
+    private static final String FIND_BY_QUEUE_ID_SQL = "select * from subscription_metrics qm join subscription_definitions qd on qd.id = qm.subscription_id where qd.queue_id = ? and qd.username = ?";
 
     @SuppressWarnings("unused")
-    public List<QueryMetrics> findByFeedId(String username, Long feedId) throws DataAccessException {
+    public List<SubscriptionMetrics> findByQueueId(String username, Long queueId) throws DataAccessException {
         try {
-            return jdbcTemplate.query(FIND_BY_FEED_ID_SQL, new Object[] { feedId, username }, QUERY_METRICS_ROW_MAPPER);
+            return jdbcTemplate.query(FIND_BY_QUEUE_ID_SQL, new Object[] { queueId, username }, SUBSCRIPTION_METRICS_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findByFeedId", e.getMessage(), username, feedId);
+            throw new DataAccessException(getClass().getSimpleName(), "findByFeedId", e.getMessage(), username, queueId);
         }
     }
 
-    private static final String FIND_BY_QUERY_ID_SQL = "select * from query_metrics qm join query_definitions qd on qd.id = qm.query_id where qd.id = ? and qd.username = ?";
+    private static final String FIND_BY_SUBSCRIPTION_ID_SQL = "select * from subscription_metrics qm join subscription_definitions qd on qd.id = qm.subscription_id where qd.id = ? and qd.username = ?";
 
     @SuppressWarnings("unused")
-    public List<QueryMetrics> findByQueryId(String username, Long queryId) throws DataAccessException {
+    public List<SubscriptionMetrics> findBySubscriptionId(String username, Long subscriptionId) throws DataAccessException {
         try {
-            return jdbcTemplate.query(FIND_BY_QUERY_ID_SQL, new Object[] { queryId, username }, QUERY_METRICS_ROW_MAPPER);
+            return jdbcTemplate.query(FIND_BY_SUBSCRIPTION_ID_SQL, new Object[] { subscriptionId, username }, SUBSCRIPTION_METRICS_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findByQueryId", e.getMessage(), username, queryId);
+            throw new DataAccessException(getClass().getSimpleName(), "findBySubscriptionId", e.getMessage(), username, subscriptionId);
         }
     }
 
-    private static final String FIND_BY_USERNAME_SQL = "select * from query_metrics qm join query_definitions qd on qd.id = qm.query_id where qd.username = ?";
+    private static final String FIND_BY_USERNAME_SQL = "select * from subscription_metrics qm join subscription_definitions qd on qd.id = qm.subscription_id where qd.username = ?";
 
     @SuppressWarnings("unused")
-    public List<QueryMetrics> findByUsername(String username) throws DataAccessException {
+    public List<SubscriptionMetrics> findByUsername(String username) throws DataAccessException {
         try {
-            return jdbcTemplate.query(FIND_BY_USERNAME_SQL, new Object[]{username}, QUERY_METRICS_ROW_MAPPER);
+            return jdbcTemplate.query(FIND_BY_USERNAME_SQL, new Object[]{username}, SUBSCRIPTION_METRICS_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
             throw new DataAccessException(getClass().getSimpleName(), "findByUsername", e.getMessage(), username);
         }
     }
 
+    private static final String FIND_LATEST_BY_USERNAME_SQL = "select qd.queue_id,max(qm.import_timestamp) as max_import_timestamp from subscription_metrics qm join subscription_definitions qd on qd.id = qm.subscription_id where qd.username = ? group by qd.queue_id";
+
+    @SuppressWarnings("unused")
+    public Map<Long, Timestamp> findLatestByUsername(String username) throws DataAccessException {
+        try {
+            return jdbcTemplate.query(FIND_LATEST_BY_USERNAME_SQL, new Object[]{username}, rs -> {
+                Map<Long, Timestamp> m = new HashMap<>();
+                while (rs.next()) {
+                    Long feedId = rs.getLong("queue_id");
+                    Timestamp maxImportTimestamp = rs.getTimestamp("max_import_timestamp");
+                    m.put(feedId, maxImportTimestamp);
+                }
+                return m;
+            });
+        } catch (Exception e) {
+            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            throw new DataAccessException(getClass().getSimpleName(), "findLatestByUsername", e.getMessage(), username);
+        }
+    }
+
     //
     //
     //
 
-    private static final String PURGE_ORPHANED = "delete from query_metrics where id in (select qm.id from query_metrics qm left join query_definitions qd on qd.id = qm.query_id where qd.id is null)";
+    private static final String PURGE_ORPHANED = "delete from subscription_metrics where id in (select qm.id from subscription_metrics qm left join subscription_definitions qd on qd.id = qm.subscription_id where qd.id is null)";
 
     @SuppressWarnings("unused")
     public int purgeOrphaned() throws DataAccessException {

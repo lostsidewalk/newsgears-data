@@ -80,8 +80,8 @@ public class StagingPostDao {
                     "post_img_transport_ident," +
                     "importer_id," +
                     "importer_desc," +
-                    "query_id," +
-                    "feed_id," +
+                    "subscription_id," +
+                    "queue_id," +
                     "import_timestamp," +
                     "post_read_status," +
                     "post_pub_status," +
@@ -108,8 +108,8 @@ public class StagingPostDao {
                     "?," + // post_img_transport_ident
                     "?," + // importer_id
                     "?," + // importer_desc
-                    "?," + // query_id
-                    "?," + // feed_id
+                    "?," + // subscription_id
+                    "?," + // queue_id
                     "?," + // import_timestamp
                     "?," + // post_read_status
                     "?," + // post_pub_status
@@ -152,8 +152,8 @@ public class StagingPostDao {
                         ps.setString(10, stagingPost.getPostImgTransportIdent());
                         ps.setString(11, stagingPost.getImporterId()); // nn
                         ps.setString(12, stagingPost.getImporterDesc());
-                        ps.setLong(13, stagingPost.getQueryId()); // nn
-                        ps.setLong(14, stagingPost.getFeedId()); // nn
+                        ps.setLong(13, stagingPost.getSubscriptionId()); // nn
+                        ps.setLong(14, stagingPost.getQueueId()); // nn
                         ps.setTimestamp(15, toTimestamp(stagingPost.getImportTimestamp()));
                         ps.setString(16, ofNullable(stagingPost.getPostReadStatus()).map(Enum::name).orElse(null));
                         ps.setString(17, ofNullable(stagingPost.getPostPubStatus()).map(Enum::name).orElse(null));
@@ -223,9 +223,9 @@ public class StagingPostDao {
         String postImgUrl = rs.getString("post_img_url");
         String postImgTransportIdent = rs.getString("post_img_transport_ident");
         String importerId = rs.getString("importer_id");
-        Long feedId = rs.getLong("feed_id");
+        Long queueId = rs.getLong("queue_id");
         String importerDesc = rs.getString("importer_desc");
-        Long queryId = rs.getLong("query_id");
+        Long subscriptionId = rs.getLong("subscription_id");
         Timestamp importTimestamp = rs.getTimestamp("import_timestamp");
         String postReadStatus = rs.getString("post_read_status");
         String postPubStatus = rs.getString("post_pub_status");
@@ -264,9 +264,9 @@ public class StagingPostDao {
 
         StagingPost p = StagingPost.from(
                 importerId,
-                feedId,
+                queueId,
                 importerDesc,
-                queryId,
+                subscriptionId,
                 postTitle,
                 postDesc,
                 postContents,
@@ -311,44 +311,44 @@ public class StagingPostDao {
 
 //    private static final String FIND_PUB_PENDING_SQL = "select * from staging_posts where post_pub_status = 'PUB_PENDING'";
 
-    // Note: this query excludes feeds marked for deletion
-    private static final String FIND_PUB_PENDING_BY_FEED_SQL =
+    // Note: this query excludes queues marked for deletion
+    private static final String FIND_PUB_PENDING_BY_QUEUE_ID_SQL =
             "select * from staging_posts s " +
-            "join feed_definitions f on f.id = s.feed_id " +
-            "where f.feed_status = 'ENABLED' and f.is_deleted is false and f.username = ? " +
+            "join queue_definitions f on f.id = s.queue_id " +
+            "where f.queue_status = 'ENABLED' and f.is_deleted is false and f.username = ? " +
             "and s.post_pub_status = 'PUB_PENDING' " +
-            "and s.feed_id = ?";
+            "and s.queue_id = ?";
 
     @SuppressWarnings("unused")
-    public List<StagingPost> getPubPending(String username, Long feedId) throws DataAccessException {
-        if (isNotBlank(username) && feedId != null) {
+    public List<StagingPost> getPubPending(String username, Long queueId) throws DataAccessException {
+        if (isNotBlank(username) && queueId != null) {
             try {
-                return jdbcTemplate.query(FIND_PUB_PENDING_BY_FEED_SQL, new Object[]{username, feedId}, STAGING_POST_ROW_MAPPER);
+                return jdbcTemplate.query(FIND_PUB_PENDING_BY_QUEUE_ID_SQL, new Object[]{username, queueId}, STAGING_POST_ROW_MAPPER);
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
-                throw new DataAccessException(getClass().getSimpleName(), "getPubPending", e.getMessage(), username, feedId);
+                throw new DataAccessException(getClass().getSimpleName(), "getPubPending", e.getMessage(), username, queueId);
             }
         }
 
         return emptyList(); // jdbcTemplate.query(FIND_PUB_PENDING_SQL, STAGING_POST_ROW_MAPPER);
     }
 
-    // Note: this query does not exclude feeds marked for deletion
-    private static final String FIND_DEPUB_PENDING_BY_FEED_SQL =
+    // Note: this query does not exclude queues marked for deletion
+    private static final String FIND_DEPUB_PENDING_BY_QUEUE_SQL =
             "select * from staging_posts s " +
-                    "join feed_definitions f on f.id = s.feed_id " +
-                    "where f.feed_status = 'ENABLED' and f.username = ? " +
+                    "join queue_definitions f on f.id = s.queue_id " +
+                    "where f.queue_status = 'ENABLED' and f.username = ? " +
                     "and s.post_pub_status = 'DEPUB_PENDING' " +
-                    "and s.feed_id = ?";
+                    "and s.queue_id = ?";
 
     @SuppressWarnings("unused")
-    public List<StagingPost> getDepubPending(String username, Long feedId) throws DataAccessException {
-        if (isNotBlank(username) && feedId != null) {
+    public List<StagingPost> getDepubPending(String username, Long queueId) throws DataAccessException {
+        if (isNotBlank(username) && queueId != null) {
             try {
-                return jdbcTemplate.query(FIND_DEPUB_PENDING_BY_FEED_SQL, new Object[] { username, feedId }, STAGING_POST_ROW_MAPPER);
+                return jdbcTemplate.query(FIND_DEPUB_PENDING_BY_QUEUE_SQL, new Object[] { username, queueId }, STAGING_POST_ROW_MAPPER);
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
-                throw new DataAccessException(getClass().getSimpleName(), "getDepubPending", e.getMessage(), username, feedId);
+                throw new DataAccessException(getClass().getSimpleName(), "getDepubPending", e.getMessage(), username, queueId);
             }
         }
 
@@ -388,16 +388,16 @@ public class StagingPostDao {
         return rowsUpdated;
     }
 
-    private static final String FIND_FEED_ID_BY_STAGING_POST_ID =
-            "select feed_id from staging_posts where id = ? and username = ?";
+    private static final String FIND_QUEUE_ID_BY_STAGING_POST_ID =
+            "select queue_id from staging_posts where id = ? and username = ?";
 
     @SuppressWarnings("unused")
-    public Long findFeedIdByStagingPostId(String username, Long id) throws DataAccessException {
+    public Long findQueueIdByStagingPostId(String username, Long id) throws DataAccessException {
         try {
-            return jdbcTemplate.queryForObject(FIND_FEED_ID_BY_STAGING_POST_ID, new Object[] { id, username }, Long.class);
+            return jdbcTemplate.queryForObject(FIND_QUEUE_ID_BY_STAGING_POST_ID, new Object[] { id, username }, Long.class);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findFeedIdentByStagingPostId", e.getMessage(), username, id);
+            throw new DataAccessException(getClass().getSimpleName(), "findQueueIdentByStagingPostId", e.getMessage(), username, id);
         }
     }
 
@@ -414,7 +414,7 @@ public class StagingPostDao {
     }
 
     private static final String FIND_BY_USER_SQL = "select s.* from staging_posts s " +
-            "join feed_definitions f on f.id = s.feed_id " +
+            "join queue_definitions f on f.id = s.queue_id " +
             "where (s.post_pub_status is null or s.post_pub_status != 'ARCHIVED') " +
             "and f.username = ? " +
             "and f.is_deleted is false";
@@ -430,10 +430,10 @@ public class StagingPostDao {
         }
     }
 
-    // Note: this query exclude feeds marked for deletion
-    private static final String FIND_BY_USER_AND_FEED_ID_SQL_TEMPLATE =
+    // Note: this query exclude queues marked for deletion
+    private static final String FIND_BY_USER_AND_QUEUE_ID_SQL_TEMPLATE =
             "select s.* from staging_posts s " +
-                "join feed_definitions f on f.id = s.feed_id " +
+                "join queue_definitions f on f.id = s.queue_id " +
                 "where f.username = ? " +
                 "and f.is_deleted is false " +
                 "and f.id in (%s) " +
@@ -441,43 +441,43 @@ public class StagingPostDao {
 
     // non-archived only
     @SuppressWarnings("unused")
-    public List<StagingPost> findByUserAndFeedIds(String username, List<Long> feedIds) throws DataAccessException {
+    public List<StagingPost> findByUserAndQueueIds(String username, List<Long> queueIds) throws DataAccessException {
         try {
             // TODO: this should be a general purpose utility method, and should support groups on 'in' params > 1000
-            String inSql = feedIds.stream()
+            String inSql = queueIds.stream()
                 .map(Object::toString)
                 .map(s -> s.replaceAll("[^\\d-]", EMPTY))
                 .collect(joining(","));
             return jdbcTemplate.query(
-                    String.format(FIND_BY_USER_AND_FEED_ID_SQL_TEMPLATE, inSql),
+                    String.format(FIND_BY_USER_AND_QUEUE_ID_SQL_TEMPLATE, inSql),
                     new Object[]{username},
                     STAGING_POST_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findByUserAndFeedIds", e.getMessage(), username, feedIds);
+            throw new DataAccessException(getClass().getSimpleName(), "findByUserAndQueueIds", e.getMessage(), username, queueIds);
         }
     }
 
-    private static final String FIND_BY_USER_AND_QUERY_ID_SQL = "select s.* from staging_posts s " +
-            "join feed_definitions f on f.id = s.feed_id " +
+    private static final String FIND_BY_USER_AND_SUBSCRIPTION_ID_SQL = "select s.* from staging_posts s " +
+            "join queue_definitions f on f.id = s.queue_id " +
             "where (s.post_pub_status is null or s.post_pub_status != 'ARCHIVED') " +
             "and f.username = ? " +
             "and f.is_deleted is false " +
-            "and s.query_id = ?";
+            "and s.subscription_id = ?";
 
     // non-archived only
     @SuppressWarnings("unused")
-    public List<StagingPost> findByUserAndQueryId(String username, Long queryId) throws DataAccessException {
+    public List<StagingPost> findByUserAndSubscriptionId(String username, Long subscriptionId) throws DataAccessException {
         try {
-            return jdbcTemplate.query(FIND_BY_USER_AND_QUERY_ID_SQL, new Object[]{ username, queryId }, STAGING_POST_ROW_MAPPER);
+            return jdbcTemplate.query(FIND_BY_USER_AND_SUBSCRIPTION_ID_SQL, new Object[]{ username, subscriptionId }, STAGING_POST_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findByUserAndQueryId", e.getMessage(), username, queryId);
+            throw new DataAccessException(getClass().getSimpleName(), "findByUserAndSubscriptionId", e.getMessage(), username, subscriptionId);
         }
     }
 
     private static final String FIND_ALL_UNPUBLISHED_SQL = "select s.* from staging_posts s " +
-            "join feed_definitions f on f.id = s.feed_id " +
+            "join queue_definitions f on f.id = s.queue_id " +
             "where s.is_published = false " +
             "and f.is_deleted is false " +
             "and (s.post_pub_status is null or s.post_pub_status != 'ARCHIVED')";
@@ -494,7 +494,7 @@ public class StagingPostDao {
     }
 
     private static final String FIND_UNPUBLISHED_BY_USER_SQL = "select s.* from staging_posts s " +
-            "join feed_definitions f on f.id = s.feed_id " +
+            "join queue_definitions f on f.id = s.queue_id " +
             "where f.username = ? " +
             "and f.is_deleted is false" +
             "and s.is_published is false " +
@@ -564,19 +564,19 @@ public class StagingPostDao {
         }
     }
 
-    private static final String FIND_PUBLISHED_BY_FEED_SQL =
+    private static final String FIND_PUBLISHED_BY_QUEUE_SQL =
             "select * from staging_posts " +
                     "where is_published = true " +
                     "and (post_pub_status is null or post_pub_status != 'DEPUB_PENDING') " +
-                    "and feed_id = ? and username = ?";
+                    "and queue_id = ? and username = ?";
 
     @SuppressWarnings("unused")
-    public List<StagingPost> findPublishedByFeed(String username, Long feedId) throws DataAccessException {
+    public List<StagingPost> findPublishedByQueue(String username, Long queueId) throws DataAccessException {
         try {
-            return jdbcTemplate.query(FIND_PUBLISHED_BY_FEED_SQL, new Object[] { feedId, username }, STAGING_POST_ROW_MAPPER);
+            return jdbcTemplate.query(FIND_PUBLISHED_BY_QUEUE_SQL, new Object[] { queueId, username }, STAGING_POST_ROW_MAPPER);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "findPublishedByFeed", e.getMessage(), username, feedId);
+            throw new DataAccessException(getClass().getSimpleName(), "findPublishedByQueue", e.getMessage(), username, queueId);
         }
     }
 
@@ -653,19 +653,19 @@ public class StagingPostDao {
         }
     }
 
-    private static final String UPDATE_POST_READ_STATUS_BY_FEED_ID = "update staging_posts set post_read_status = ? where feed_id = ? and username = ?";
+    private static final String UPDATE_POST_READ_STATUS_BY_QUEUE_ID = "update staging_posts set post_read_status = ? where queue_id = ? and username = ?";
 
     @SuppressWarnings("unused")
-    public void updateFeedReadStatus(String username, long id, PostReadStatus postStatus) throws DataAccessException, DataUpdateException {
+    public void updateQueueReadStatus(String username, long id, PostReadStatus postStatus) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
-            rowsUpdated = jdbcTemplate.update(UPDATE_POST_READ_STATUS_BY_FEED_ID, postStatus == null ? null : postStatus.toString(), id, username);
+            rowsUpdated = jdbcTemplate.update(UPDATE_POST_READ_STATUS_BY_QUEUE_ID, postStatus == null ? null : postStatus.toString(), id, username);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "updateFeedReadStatus", e.getMessage(), username, id, postStatus);
+            throw new DataAccessException(getClass().getSimpleName(), "updateQueueReadStatus", e.getMessage(), username, id, postStatus);
         }
         if (!(rowsUpdated > 0)) {
-            throw new DataUpdateException(getClass().getSimpleName(), "updateFeedReadStatus", username, id, postStatus);
+            throw new DataUpdateException(getClass().getSimpleName(), "updateQueueReadStatus", username, id, postStatus);
         }
     }
 
@@ -685,15 +685,15 @@ public class StagingPostDao {
         }
     }
 
-    private static final String UPDATE_POST_PUB_STATUS_BY_FEED_ID = "update staging_posts set post_pub_status = ? where feed_id = ? and username = ? and post_pub_status is not null";
+    private static final String UPDATE_POST_PUB_STATUS_BY_QUEUE_ID = "update staging_posts set post_pub_status = ? where queue_id = ? and username = ? and post_pub_status is not null";
 
     @SuppressWarnings("unused")
-    public void updateFeedPubStatus(String username, long id, PostPubStatus postStatus) throws DataAccessException {
+    public void updateQueuePubStatus(String username, long id, PostPubStatus postStatus) throws DataAccessException {
         try {
-            jdbcTemplate.update(UPDATE_POST_PUB_STATUS_BY_FEED_ID, postStatus == null ? null : postStatus.toString(), id, username);
+            jdbcTemplate.update(UPDATE_POST_PUB_STATUS_BY_QUEUE_ID, postStatus == null ? null : postStatus.toString(), id, username);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage(), e);
-            throw new DataAccessException(getClass().getSimpleName(), "updateFeedPubStatus", e.getMessage(), username, id, postStatus);
+            throw new DataAccessException(getClass().getSimpleName(), "updateQueuePubStatus", e.getMessage(), username, id, postStatus);
         }
     }
 
