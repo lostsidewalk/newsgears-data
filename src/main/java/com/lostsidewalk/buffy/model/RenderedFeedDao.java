@@ -1,10 +1,9 @@
 package com.lostsidewalk.buffy.model;
 
 import com.lostsidewalk.buffy.DataAccessException;
-import com.lostsidewalk.buffy.model.RenderedATOMFeed;
-import com.lostsidewalk.buffy.model.RenderedRSSFeed;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -13,6 +12,7 @@ import java.io.Serializable;
 
 @Slf4j
 @Component
+@Profile("redis")
 public class RenderedFeedDao {
 
     @Autowired
