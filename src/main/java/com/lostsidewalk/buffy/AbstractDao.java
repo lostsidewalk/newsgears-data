@@ -1,5 +1,6 @@
 package com.lostsidewalk.buffy;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -27,14 +28,16 @@ public abstract class AbstractDao<T> {
 
     protected abstract RowMapper<T> getRowMapper();
 
-    private final String findAllSQL;
-    private final String findByNameSQL;
-    private final String findByIdSQL;
-    private final String findAllNamesSQL;
-    private final String deleteByIdSQL;
-    private final String deleteByNameSQL;
-    private final String insertSQL;
-    private final String updateSQL;
+    protected abstract String getTableName();
+
+    private String findAllSQL;
+    private String findByNameSQL;
+    private String findByIdSQL;
+    private String findAllNamesSQL;
+    private String deleteByIdSQL;
+    private String deleteByNameSQL;
+    private String insertSQL;
+    private String updateSQL;
     //
     // attribute accessors
     //
@@ -66,7 +69,13 @@ public abstract class AbstractDao<T> {
 
     protected void configureUpdateParams(MapSqlParameterSource parameters, T entity) {}
 
-    protected AbstractDao(String tableName) {
+    protected AbstractDao() {
+    }
+
+    @SuppressWarnings("unused")
+    @PostConstruct
+    protected void postConstruct() {
+        String tableName = getTableName();
         this.findAllSQL = String.format("select * from %s", tableName);
         this.findByNameSQL = String.format("select * from %s where %s = ?", tableName, getNameAttribute());
         this.findByIdSQL = String.format("select * from %s where id = ?", tableName);
@@ -93,7 +102,10 @@ public abstract class AbstractDao<T> {
             this.updateSQL = null;
         }
 
+        setupSQL();
     }
+
+    protected void setupSQL() {};
 
     @SuppressWarnings("unused")
     public List<T> findAll() throws DataAccessException {

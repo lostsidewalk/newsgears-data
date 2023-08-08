@@ -6,6 +6,7 @@ import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.DataUpdateException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -27,23 +28,61 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 @Component
 public class UserDao extends AbstractDao<User> {
 
-    private static final String TABLE_NAME = "users";
-
-    private static final String findByEmailAddressSQL = "select * from users u where email_address = ?";
-
-    private static final String findByCustomerIdSQL = "select * from users u where customer_id = ?";
-
-    private static final String findByAuthProviderIdSQL = "select * from users u where auth_provider = ? and auth_provider_id = ?";
-
-    private static final String countByUsernameOrEmailAddressSQL = "select count(*) from users where (name = ? or email_address = ?)";
-
-    private static final String setVerifiedSQL = "update users set is_verified = ? where name = ?";
-
     @Autowired
     JdbcTemplate jdbcTemplate;
 
-    protected UserDao() {
-        super(TABLE_NAME);
+    @Value("${newsgears.data.users.table}")
+    String tableName;
+
+    private static final String FIND_BY_EMAIL_ADDRESS_SQL = "select * from %s u where email_address = ?";
+    private static final String FIND_BY_CUSTOMER_ID_SQL = "select * from %s u where customer_id = ?";
+    private static final String FIND_BY_AUTH_PROVIDER_ID_SQL = "select * from %s u where auth_provider = ? and auth_provider_id = ?";
+    private static final String COUNT_BY_USERNAME_OR_EMAIL_ADDRESS_SQL = "select count(*) from %s where (name = ? or email_address = ?)";
+    private static final String SET_VERIFIED_SQL = "update %s set is_verified = ? where name = ?";
+
+    private String findByEmailAddressSQL;
+    private String findByCustomerIdSQL;
+    private String findByAuthProviderIdSQL;
+    private String countByUsernameOrEmailAddressSQL;
+    private String setVerifiedSQL;
+
+    private static final String UPDATE_AUTH_CLAIM_SQL = "update %s set auth_claim = ? where id = ?";
+    private static final String UPDATE_PW_RESET_CLAIM_SQL = "update %s set pw_reset_claim = ? where id = ?";
+    private static final String UPDATE_VERIFICATION_CLAIM_SQL = "update %s set verification_claim = ? where id = ?";
+    private static final String UPDATE_PW_RESET_AUTH_CLAIM_SQL = "update %s set pw_reset_auth_claim = ? where id = ?";
+    private static final String UPDATE_PASSWORD_SQL = "update %s set password = ? where id = ?";
+    private static final String UPDATE_EMAIL_ADDRESS_SQL = "update %s set email_address = ? where id = ?";
+    private static final String UPDATE_CUSTOMER_ID_SQL = "update %s set customer_id = ? where id = ?";
+    private static final String UPDATE_SUBSCRIPTION_STATUS_SQL = "update %s set subscription_status = ? where id = ?";
+    private static final String UPDATE_SUBSCRIPTION_EXP_DATE_SQL = "update %s set subscription_exp_date = ? where id = ?";
+
+    private String updateAuthClaimSql;
+    private String updatePwResetClaimSql;
+    private String updateVerificationClaimSql;
+    private String updatePwResetAuthClaimSql;
+    private String updatePasswordSql;
+    private String updateEmailAddressSql;
+    private String updateCustomerIdSql;
+    private String updateSubscriptionStatusSql;
+    private String updateSubscriptionExpDateSql;
+
+    @Override
+    protected void setupSQL() {
+        this.findByEmailAddressSQL = String.format(FIND_BY_EMAIL_ADDRESS_SQL, tableName);
+        this.findByCustomerIdSQL = String.format(FIND_BY_CUSTOMER_ID_SQL, tableName);
+        this.findByAuthProviderIdSQL = String.format(FIND_BY_AUTH_PROVIDER_ID_SQL, tableName);
+        this.countByUsernameOrEmailAddressSQL = String.format(COUNT_BY_USERNAME_OR_EMAIL_ADDRESS_SQL, tableName);
+        this.setVerifiedSQL = String.format(SET_VERIFIED_SQL, tableName);
+
+        this.updateAuthClaimSql = String.format(UPDATE_AUTH_CLAIM_SQL, tableName);
+        this.updatePwResetClaimSql = String.format(UPDATE_PW_RESET_CLAIM_SQL, tableName);
+        this.updateVerificationClaimSql = String.format(UPDATE_VERIFICATION_CLAIM_SQL, tableName);
+        this.updatePwResetAuthClaimSql = String.format(UPDATE_PW_RESET_AUTH_CLAIM_SQL, tableName);
+        this.updatePasswordSql = String.format(UPDATE_PASSWORD_SQL, tableName);
+        this.updateEmailAddressSql = String.format(UPDATE_EMAIL_ADDRESS_SQL, tableName);
+        this.updateCustomerIdSql = String.format(UPDATE_CUSTOMER_ID_SQL, tableName);
+        this.updateSubscriptionStatusSql = String.format(UPDATE_SUBSCRIPTION_STATUS_SQL, tableName);
+        this.updateSubscriptionExpDateSql = String.format(UPDATE_SUBSCRIPTION_EXP_DATE_SQL, tableName);
     }
 
     private static final String NAME_ATTRIBUTE = "name";
@@ -168,6 +207,11 @@ public class UserDao extends AbstractDao<User> {
         return USER_ROW_MAPPER;
     }
 
+    @Override
+    protected String getTableName() {
+        return tableName;
+    }
+
     @SuppressWarnings("unused")
     public User findByEmailAddress(String emailAddress) throws DataAccessException {
         if (isNotBlank(emailAddress)) {
@@ -244,14 +288,13 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
-    private static final String UPDATE_AUTH_CLAIM_SQL = "update users set auth_claim = ? where id = ?";
 
     @SuppressWarnings("unused")
     public void updateAuthClaim(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(UPDATE_AUTH_CLAIM_SQL, user.getAuthClaim(), user.getId());
+                rowsUpdated = getJdbcTemplate().update(updateAuthClaimSql, user.getAuthClaim(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
                 throw new DataAccessException(getClass().getSimpleName(), "updateAuthClaim", e.getMessage(), user.getAuthClaim(), user.getId());
@@ -262,14 +305,13 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
-    private static final String UPDATE_PW_RESET_CLAIM_SQL = "update users set pw_reset_claim = ? where id = ?";
 
     @SuppressWarnings("unused")
     public void updatePwResetClaim(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(UPDATE_PW_RESET_CLAIM_SQL, user.getPwResetClaim(), user.getId());
+                rowsUpdated = getJdbcTemplate().update(updatePwResetClaimSql, user.getPwResetClaim(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
                 throw new DataAccessException(getClass().getSimpleName(), "updatePwResetClaim", e.getMessage(), user.getPwResetClaim(), user.getId());
@@ -280,14 +322,12 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
-    private static final String UPDATE_VERIFICATION_CLAIM_SQL = "update users set verification_claim = ? where id = ?";
-
     @SuppressWarnings("unused")
     public void updateVerificationClaim(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(UPDATE_VERIFICATION_CLAIM_SQL, user.getVerificationClaim(), user.getId());
+                rowsUpdated = getJdbcTemplate().update(updateVerificationClaimSql, user.getVerificationClaim(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
                 throw new DataAccessException(getClass().getSimpleName(), "updateVerificationClaim", e.getMessage(), user.getVerificationClaim(), user.getId());
@@ -298,14 +338,13 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
-    private static final String UPDATE_PW_RESET_AUTH_CLAIM_SQL = "update users set pw_reset_auth_claim = ? where id = ?";
 
     @SuppressWarnings("unused")
     public void updatePwResetAuthClaim(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(UPDATE_PW_RESET_AUTH_CLAIM_SQL, user.getPwResetAuthClaim(), user.getId());
+                rowsUpdated = getJdbcTemplate().update(updatePwResetAuthClaimSql, user.getPwResetAuthClaim(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
                 throw new DataAccessException(getClass().getSimpleName(), "updatePwResetAuthClaim", e.getMessage(), user.getPwResetAuthClaim(), user.getId());
@@ -316,14 +355,12 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
-    private static final String UPDATE_PASSWORD_SQL = "update users set password = ? where id = ?";
-
     @SuppressWarnings("unused")
     public void updatePassword(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(UPDATE_PASSWORD_SQL, user.getPassword(), user.getId());
+                rowsUpdated = getJdbcTemplate().update(updatePasswordSql, user.getPassword(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
                 throw new DataAccessException(getClass().getSimpleName(), "updatePassword", e.getMessage(), user.getId()); // password not shown
@@ -334,14 +371,12 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
-    private static final String UPDATE_EMAIL_ADDRESS_SQL = "update users set email_address = ? where id = ?";
-
     @SuppressWarnings("unused")
     public void updateEmailAddress(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(UPDATE_EMAIL_ADDRESS_SQL, user.getEmailAddress());
+                rowsUpdated = getJdbcTemplate().update(updateEmailAddressSql, user.getEmailAddress());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
                 throw new DataAccessException(getClass().getSimpleName(), "updateEmailAddress", e.getMessage(), user.getId(), user.getEmailAddress());
@@ -352,14 +387,12 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
-    private static final String UPDATE_CUSTOMER_ID_SQL = "update users set customer_id = ? where id = ?";
-
     @SuppressWarnings("unused")
     public void updateCustomerId(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(UPDATE_CUSTOMER_ID_SQL, user.getCustomerId(), user.getId());
+                rowsUpdated = getJdbcTemplate().update(updateCustomerIdSql, user.getCustomerId(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
                 throw new DataAccessException(getClass().getSimpleName(), "updateCustomerId", e.getMessage(), user.getId(), user.getEmailAddress());
@@ -370,14 +403,12 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
-    private static final String UPDATE_SUBSCRIPTION_STATUS_SQL = "update users set subscription_status = ? where id = ?";
-
     @SuppressWarnings("unused")
     public void updateSubscriptionStatus(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(UPDATE_SUBSCRIPTION_STATUS_SQL, user.getSubscriptionStatus(), user.getId());
+                rowsUpdated = getJdbcTemplate().update(updateSubscriptionStatusSql, user.getSubscriptionStatus(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
                 throw new DataAccessException(getClass().getSimpleName(), "updateSubscriptionStatus", e.getMessage(), user.getId(), user.getSubscriptionStatus());
@@ -388,14 +419,12 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
-    private static final String UPDATE_SUBSCRIPTION_EXP_DATE_SQL = "update users set subscription_exp_date = ? where id = ?";
-
     @SuppressWarnings("unused")
     public void updateSubscriptionExpDate(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(UPDATE_SUBSCRIPTION_EXP_DATE_SQL, toTimestamp(user.getSubscriptionExpDate()), user.getId());
+                rowsUpdated = getJdbcTemplate().update(updateSubscriptionExpDateSql, toTimestamp(user.getSubscriptionExpDate()), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
                 throw new DataAccessException(getClass().getSimpleName(), "updateSubscriptionExpDate", e.getMessage(), user.getId(), user.getSubscriptionExpDate());

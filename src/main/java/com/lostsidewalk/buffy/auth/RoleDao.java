@@ -1,8 +1,8 @@
 package com.lostsidewalk.buffy.auth;
 
 import com.lostsidewalk.buffy.AbstractDao;
-import com.lostsidewalk.buffy.auth.Role;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -16,18 +16,22 @@ import static java.sql.Types.VARCHAR;
 @Component
 public class RoleDao extends AbstractDao<Role> {
 
-    private static final String TABLE_NAME = "roles";
-
-    private final String findByUsernameSQL;
+    private String findByUsernameSQL;
 
     @Autowired
     JdbcTemplate jdbcTemplate;
 
-    protected RoleDao() {
-        super(TABLE_NAME);
+    @Value("${newsgears.data.roles.table}")
+    String tableName;
+
+    @Value("${newsgears.data.uir.table}")
+    String uirTableName;
+
+    @Override
+    protected void setupSQL() {
         this.findByUsernameSQL =
-                "select * from roles r "
-                + " join users_in_roles uir on uir.role = r.name "
+                "select * from " + getTableName() + " r "
+                + " join " + uirTableName + " uir on uir.role = r.name "
                 + " join users u on u.name = uir.username "
                 + " where u.name = ?";
     }
@@ -82,6 +86,11 @@ public class RoleDao extends AbstractDao<Role> {
     @Override
     protected RowMapper<Role> getRowMapper() {
         return ROLE_ROW_MAPPER;
+    }
+
+    @Override
+    protected String getTableName() {
+        return tableName;
     }
 
     @SuppressWarnings("unused")
