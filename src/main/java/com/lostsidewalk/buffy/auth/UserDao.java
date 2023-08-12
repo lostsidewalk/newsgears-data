@@ -34,15 +34,20 @@ public class UserDao extends AbstractDao<User> {
     @Value("${newsgears.data.users.table}")
     String tableName;
 
+    @Value("${newsgears.data.apikeys.table}")
+    String apiKeysTableName;
+
     private static final String FIND_BY_EMAIL_ADDRESS_SQL = "select * from %s u where email_address = ?";
     private static final String FIND_BY_CUSTOMER_ID_SQL = "select * from %s u where customer_id = ?";
     private static final String FIND_BY_AUTH_PROVIDER_ID_SQL = "select * from %s u where auth_provider = ? and auth_provider_id = ?";
+    private static final String FIND_BY_API_KEY_SQL = "select * from %s u join %s a on u.id = a.user_id where a.api_key = ?";
     private static final String COUNT_BY_USERNAME_OR_EMAIL_ADDRESS_SQL = "select count(*) from %s where (name = ? or email_address = ?)";
     private static final String SET_VERIFIED_SQL = "update %s set is_verified = ? where name = ?";
 
     private String findByEmailAddressSQL;
     private String findByCustomerIdSQL;
     private String findByAuthProviderIdSQL;
+    private String findByApiKeySQL;
     private String countByUsernameOrEmailAddressSQL;
     private String setVerifiedSQL;
 
@@ -71,6 +76,7 @@ public class UserDao extends AbstractDao<User> {
         this.findByEmailAddressSQL = String.format(FIND_BY_EMAIL_ADDRESS_SQL, tableName);
         this.findByCustomerIdSQL = String.format(FIND_BY_CUSTOMER_ID_SQL, tableName);
         this.findByAuthProviderIdSQL = String.format(FIND_BY_AUTH_PROVIDER_ID_SQL, tableName);
+        this.findByApiKeySQL = String.format(FIND_BY_API_KEY_SQL, tableName, apiKeysTableName);
         this.countByUsernameOrEmailAddressSQL = String.format(COUNT_BY_USERNAME_OR_EMAIL_ADDRESS_SQL, tableName);
         this.setVerifiedSQL = String.format(SET_VERIFIED_SQL, tableName);
 
@@ -251,6 +257,21 @@ public class UserDao extends AbstractDao<User> {
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage(), e);
                 throw new DataAccessException(getClass().getSimpleName(), "findByAuthProviderId", e.getMessage(), authProvider, authProviderId);
+            }
+        }
+
+        return null;
+    }
+
+    @SuppressWarnings("unused")
+    public User findByApiKey(String apiKey) throws DataAccessException {
+        if (isNotBlank(apiKey)) {
+            try {
+                List<User> results = getJdbcTemplate().query(findByApiKeySQL, getRowMapper(), apiKey);
+                return isEmpty(results) ? null : results.get(0);
+            } catch (Exception e) {
+                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                throw new DataAccessException(getClass().getSimpleName(), "findByApiKey", e.getMessage(), apiKey);
             }
         }
 
