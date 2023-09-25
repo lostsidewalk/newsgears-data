@@ -13,6 +13,11 @@ import java.util.List;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.sql.Types.VARCHAR;
 
+/**
+ * The RoleDao class is responsible for database operations related to user roles, such as retrieving roles
+ * associated with a specific username. It extends the AbstractDao class and provides methods for managing role
+ * information in the database.
+ */
 @Component
 public class RoleDao extends AbstractDao<Role> {
 
@@ -29,11 +34,12 @@ public class RoleDao extends AbstractDao<Role> {
 
     @Override
     protected void setupSQL() {
-        this.findByUsernameSQL =
-                "select * from " + getTableName() + " r "
-                + " join " + uirTableName + " uir on uir.role = r.name "
+        this.findByUsernameSQL = String.format(
+                "select * from %s r "
+                + " join %s uir on uir.role = r.name "
                 + " join users u on u.name = uir.username "
-                + " where u.name = ?";
+                + " where u.name = ? and r.application_id = '%s'",
+                getTableName(), uirTableName, applicationId);
     }
 
     private static final String NAME_ATTRIBUTE = "name";
@@ -93,6 +99,12 @@ public class RoleDao extends AbstractDao<Role> {
         return tableName;
     }
 
+    /**
+     * Retrieves a list of roles associated with a given username.
+     *
+     * @param username The username for which roles need to be retrieved.
+     * @return A list of Role objects representing the roles associated with the username.
+     */
     @SuppressWarnings("unused")
     public List<Role> findByUsername(String username) {
         if (username != null) {

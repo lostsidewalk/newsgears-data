@@ -14,6 +14,9 @@ import static com.google.common.collect.Lists.newArrayList;
 import static java.sql.Types.NUMERIC;
 import static java.sql.Types.VARCHAR;
 
+/**
+ * Data access object for managing API keys in the application.
+ */
 @Component
 public class ApiKeyDao extends AbstractDao<ApiKey> {
 
@@ -27,7 +30,7 @@ public class ApiKeyDao extends AbstractDao<ApiKey> {
 
     @Override
     protected void setupSQL() {
-        this.findByUserIdSQL = "select * from " + getTableName() + " where user_id = ?";
+        this.findByUserIdSQL = String.format("select * from %s where user_id = ? and application_id = '%s'", getTableName(), this.applicationId);
     }
 
     private static final String NAME_ATTRIBUTE = "api_key";
@@ -96,6 +99,12 @@ public class ApiKeyDao extends AbstractDao<ApiKey> {
         return tableName;
     }
 
+    /**
+     * Retrieves an API key associated with the given user ID.
+     *
+     * @param userId The ID of the user for which to retrieve the API key.
+     * @return An `ApiKey` object representing the API key associated with the user, or `null` if the user ID is `null`.
+     */
     @SuppressWarnings("unused")
     public ApiKey findByUserId(Long userId) {
         if (userId != null) {

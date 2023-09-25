@@ -2,10 +2,19 @@ package com.lostsidewalk.buffy;
 
 import java.util.Arrays;
 
+/**
+ * Exception class representing errors related to data update operations.
+ */
 public class DataUpdateException extends Exception {
 
-    // this is caused when a DB write results in 0 rows updated, e.g. data missing/wrong ID supplied to an update statement, etc.
-    public DataUpdateException(String orgClassName, String orgMethodname, Object... orgMethodArgs) {
-        super("Data update error originated in " + orgClassName + "->" + orgMethodname + " (" + Arrays.toString(orgMethodArgs) + ")");
+    /**
+     * Constructs a new DataUpdateException with information about the origin of the error.
+     *
+     * @param orgClassName  The name of the originating class where the error occurred.
+     * @param orgMethodName The name of the originating method where the error occurred.
+     * @param orgMethodArgs The arguments (if any) of the originating method where the error occurred.
+     */
+    public DataUpdateException(String orgClassName, String orgMethodName, Object... orgMethodArgs) {
+        super("Data update error originated in " + orgClassName + "->" + orgMethodName + " (" + Arrays.toString(orgMethodArgs) + ")");
     }
 }

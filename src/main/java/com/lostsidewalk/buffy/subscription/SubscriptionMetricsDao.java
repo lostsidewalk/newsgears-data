@@ -15,6 +15,10 @@ import java.util.Map;
 
 import static java.util.Optional.ofNullable;
 
+/**
+ * Data access object for managing subscription metrics in the application.
+ */
+@SuppressWarnings("deprecation")
 @Slf4j
 @Component
 public class SubscriptionMetricsDao {
@@ -41,6 +45,13 @@ public class SubscriptionMetricsDao {
                     ") values " +
                     "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
+    /**
+     * Adds a subscription metrics record to the database.
+     *
+     * @param queryMetrics The subscription metrics data to be added.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     * @throws DataUpdateException If the data update operation fails.
+     */
     @SuppressWarnings("unused")
     public void add(SubscriptionMetrics queryMetrics) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
@@ -62,7 +73,7 @@ public class SubscriptionMetricsDao {
                     queryMetrics.getErrorDetail()
             );
         } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "add", e.getMessage(), queryMetrics);
         }
         if (!(rowsUpdated > 0)) {
@@ -123,54 +134,90 @@ public class SubscriptionMetricsDao {
 
     private static final String FIND_ALL_SQL = "select * from subscription_metrics";
 
+    /**
+     * Retrieves all subscription metrics records from the database.
+     *
+     * @return A list of SubscriptionMetrics objects containing the subscription metrics data.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     */
     @SuppressWarnings("unused")
     public List<SubscriptionMetrics> findAll() throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_ALL_SQL, SUBSCRIPTION_METRICS_ROW_MAPPER);
         } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "findAll", e.getMessage());
         }
     }
 
     private static final String FIND_BY_QUEUE_ID_SQL = "select * from subscription_metrics qm join subscription_definitions qd on qd.id = qm.subscription_id where qd.queue_id = ? and qd.username = ?";
 
+    /**
+     * Retrieves subscription metrics records associated with a specific queue and username from the database.
+     *
+     * @param username The username associated with the subscription metrics records.
+     * @param queueId  The ID of the queue to filter the records by.
+     * @return A list of SubscriptionMetrics objects containing the subscription metrics data for the specified queue and username.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     */
     @SuppressWarnings("unused")
     public List<SubscriptionMetrics> findByQueueId(String username, Long queueId) throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_BY_QUEUE_ID_SQL, new Object[] { queueId, username }, SUBSCRIPTION_METRICS_ROW_MAPPER);
         } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "findByFeedId", e.getMessage(), username, queueId);
         }
     }
 
     private static final String FIND_BY_SUBSCRIPTION_ID_SQL = "select * from subscription_metrics qm join subscription_definitions qd on qd.id = qm.subscription_id where qd.id = ? and qd.username = ?";
 
+    /**
+     * Retrieves subscription metrics records associated with a specific subscription ID and username from the database.
+     *
+     * @param username       The username associated with the subscription metrics records.
+     * @param subscriptionId The ID of the subscription to filter the records by.
+     * @return A list of SubscriptionMetrics objects containing the subscription metrics data for the specified subscription and username.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     */
     @SuppressWarnings("unused")
     public List<SubscriptionMetrics> findBySubscriptionId(String username, Long subscriptionId) throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_BY_SUBSCRIPTION_ID_SQL, new Object[] { subscriptionId, username }, SUBSCRIPTION_METRICS_ROW_MAPPER);
         } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "findBySubscriptionId", e.getMessage(), username, subscriptionId);
         }
     }
 
     private static final String FIND_BY_USERNAME_SQL = "select * from subscription_metrics qm join subscription_definitions qd on qd.id = qm.subscription_id where qd.username = ?";
 
+    /**
+     * Retrieves subscription metrics records associated with a specific username from the database.
+     *
+     * @param username The username associated with the subscription metrics records.
+     * @return A list of SubscriptionMetrics objects containing the subscription metrics data for the specified username.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     */
     @SuppressWarnings("unused")
     public List<SubscriptionMetrics> findByUsername(String username) throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_BY_USERNAME_SQL, new Object[]{username}, SUBSCRIPTION_METRICS_ROW_MAPPER);
         } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "findByUsername", e.getMessage(), username);
         }
     }
 
     private static final String FIND_LATEST_BY_USERNAME_SQL = "select qd.queue_id,max(qm.import_timestamp) as max_import_timestamp from subscription_metrics qm join subscription_definitions qd on qd.id = qm.subscription_id where qd.username = ? group by qd.queue_id";
 
+    /**
+     * Retrieves the latest import timestamps for subscriptions associated with a specific username from the database.
+     *
+     * @param username The username associated with the subscriptions.
+     * @return A map where the keys are queue IDs, and the values are the latest import timestamps for each queue.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     */
     @SuppressWarnings("unused")
     public Map<Long, Timestamp> findLatestByUsername(String username) throws DataAccessException {
         try {
@@ -184,7 +231,7 @@ public class SubscriptionMetricsDao {
                 return m;
             });
         } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "findLatestByUsername", e.getMessage(), username);
         }
     }
@@ -195,13 +242,19 @@ public class SubscriptionMetricsDao {
 
     private static final String PURGE_ORPHANED = "delete from subscription_metrics where id in (select qm.id from subscription_metrics qm left join subscription_definitions qd on qd.id = qm.subscription_id where qd.id is null)";
 
+    /**
+     * Purges orphaned subscription metrics records from the database.
+     *
+     * @return The number of rows deleted as a result of the purge operation.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     */
     @SuppressWarnings("unused")
     public int purgeOrphaned() throws DataAccessException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(PURGE_ORPHANED);
         } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "purgeOrphaned", e.getMessage());
         }
 

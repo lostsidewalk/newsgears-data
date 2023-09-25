@@ -24,6 +24,9 @@ import static java.sql.Types.*;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
+/**
+ * Data access object for managing users in the application.
+ */
 @Slf4j
 @Component
 public class UserDao extends AbstractDao<User> {
@@ -37,12 +40,12 @@ public class UserDao extends AbstractDao<User> {
     @Value("${newsgears.data.apikeys.table}")
     String apiKeysTableName;
 
-    private static final String FIND_BY_EMAIL_ADDRESS_SQL = "select * from %s u where email_address = ?";
-    private static final String FIND_BY_CUSTOMER_ID_SQL = "select * from %s u where customer_id = ?";
-    private static final String FIND_BY_AUTH_PROVIDER_ID_SQL = "select * from %s u where auth_provider = ? and auth_provider_id = ?";
+    private static final String FIND_BY_EMAIL_ADDRESS_SQL = "select * from %s u where email_address = ? and application_id = '%s'";
+    private static final String FIND_BY_CUSTOMER_ID_SQL = "select * from %s u where customer_id = ? and application_id = '%s'";
+    private static final String FIND_BY_AUTH_PROVIDER_ID_SQL = "select * from %s u where auth_provider = ? and auth_provider_id = ? and application_id = '%s'";
     private static final String FIND_BY_API_KEY_SQL = "select * from %s u join %s a on u.id = a.user_id where a.api_key = ?";
-    private static final String COUNT_BY_USERNAME_OR_EMAIL_ADDRESS_SQL = "select count(*) from %s where (name = ? or email_address = ?)";
-    private static final String SET_VERIFIED_SQL = "update %s set is_verified = ? where name = ?";
+    private static final String COUNT_BY_USERNAME_OR_EMAIL_ADDRESS_SQL = "select count(*) from %s where (name = ? or email_address = ?) and application_id = '%s'";
+    private static final String SET_VERIFIED_SQL = "update %s set is_verified = ? where name = ? and application_id = '%s'";
 
     private String findByEmailAddressSQL;
     private String findByCustomerIdSQL;
@@ -73,12 +76,12 @@ public class UserDao extends AbstractDao<User> {
 
     @Override
     protected void setupSQL() {
-        this.findByEmailAddressSQL = String.format(FIND_BY_EMAIL_ADDRESS_SQL, tableName);
-        this.findByCustomerIdSQL = String.format(FIND_BY_CUSTOMER_ID_SQL, tableName);
-        this.findByAuthProviderIdSQL = String.format(FIND_BY_AUTH_PROVIDER_ID_SQL, tableName);
+        this.findByEmailAddressSQL = String.format(FIND_BY_EMAIL_ADDRESS_SQL, tableName, applicationId);
+        this.findByCustomerIdSQL = String.format(FIND_BY_CUSTOMER_ID_SQL, tableName, applicationId);
+        this.findByAuthProviderIdSQL = String.format(FIND_BY_AUTH_PROVIDER_ID_SQL, tableName, applicationId);
         this.findByApiKeySQL = String.format(FIND_BY_API_KEY_SQL, tableName, apiKeysTableName);
-        this.countByUsernameOrEmailAddressSQL = String.format(COUNT_BY_USERNAME_OR_EMAIL_ADDRESS_SQL, tableName);
-        this.setVerifiedSQL = String.format(SET_VERIFIED_SQL, tableName);
+        this.countByUsernameOrEmailAddressSQL = String.format(COUNT_BY_USERNAME_OR_EMAIL_ADDRESS_SQL, tableName, applicationId);
+        this.setVerifiedSQL = String.format(SET_VERIFIED_SQL, tableName, applicationId);
 
         this.updateAuthClaimSql = String.format(UPDATE_AUTH_CLAIM_SQL, tableName);
         this.updatePwResetClaimSql = String.format(UPDATE_PW_RESET_CLAIM_SQL, tableName);
@@ -218,6 +221,13 @@ public class UserDao extends AbstractDao<User> {
         return tableName;
     }
 
+    /**
+     * Retrieves a user by their email address.
+     *
+     * @param emailAddress The email address of the user to retrieve.
+     * @return The User object corresponding to the provided email address, or null if not found.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     */
     @SuppressWarnings("unused")
     public User findByEmailAddress(String emailAddress) throws DataAccessException {
         if (isNotBlank(emailAddress)) {
@@ -225,7 +235,7 @@ public class UserDao extends AbstractDao<User> {
                 List<User> results = getJdbcTemplate().query(findByEmailAddressSQL, getRowMapper(), emailAddress);
                 return isEmpty(results) ? null : results.get(0); // email_address should be unique
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "findByEmailAddress", e.getMessage(), emailAddress);
             }
         }
@@ -233,6 +243,13 @@ public class UserDao extends AbstractDao<User> {
         return null;
     }
 
+    /**
+     * Retrieves a user by their customer ID.
+     *
+     * @param customerId The customer ID of the user to retrieve.
+     * @return The User object corresponding to the provided customer ID, or null if not found.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     */
     @SuppressWarnings("unused")
     public User findByCustomerId(String customerId) throws DataAccessException {
         if (isNotBlank(customerId)) {
@@ -240,7 +257,7 @@ public class UserDao extends AbstractDao<User> {
                 List<User> results = getJdbcTemplate().query(findByCustomerIdSQL, getRowMapper(), customerId);
                 return isEmpty(results) ? null : results.get(0); // customer_id should be unique
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "findByCustomerId", e.getMessage(), customerId);
             }
         }
@@ -248,6 +265,14 @@ public class UserDao extends AbstractDao<User> {
         return null;
     }
 
+    /**
+     * Retrieves a user by their authentication provider and provider ID.
+     *
+     * @param authProvider The authentication provider (e.g., OAuth, Google, etc.).
+     * @param authProviderId The unique ID associated with the user from the authentication provider.
+     * @return The User object corresponding to the provided authentication provider and ID, or null if not found.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     */
     @SuppressWarnings("unused")
     public User findByAuthProviderId(AuthProvider authProvider, String authProviderId) throws DataAccessException {
         if (authProvider != null && isNotBlank(authProviderId)) {
@@ -255,7 +280,7 @@ public class UserDao extends AbstractDao<User> {
                 List<User> results = getJdbcTemplate().query(findByAuthProviderIdSQL, getRowMapper(), authProvider.name(), authProviderId);
                 return isEmpty(results) ? null : results.get(0); // auth_provider, auth_provider_id should be unique
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "findByAuthProviderId", e.getMessage(), authProvider, authProviderId);
             }
         }
@@ -263,6 +288,13 @@ public class UserDao extends AbstractDao<User> {
         return null;
     }
 
+    /**
+     * Retrieves a user by their API key.
+     *
+     * @param apiKey The API key of the user to retrieve.
+     * @return The User object corresponding to the provided API key, or null if not found.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     */
     @SuppressWarnings("unused")
     public User findByApiKey(String apiKey) throws DataAccessException {
         if (isNotBlank(apiKey)) {
@@ -270,7 +302,7 @@ public class UserDao extends AbstractDao<User> {
                 List<User> results = getJdbcTemplate().query(findByApiKeySQL, getRowMapper(), apiKey);
                 return isEmpty(results) ? null : results.get(0);
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "findByApiKey", e.getMessage(), apiKey);
             }
         }
@@ -278,6 +310,14 @@ public class UserDao extends AbstractDao<User> {
         return null;
     }
 
+    /**
+     * Checks if a user with the specified username and email address exists in the database.
+     *
+     * @param username The username of the user to check.
+     * @param emailAddress The email address of the user to check.
+     * @return True if a user with the provided username and email address exists; otherwise, false.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     */
     @SuppressWarnings("unused")
     public boolean checkExists(String username, String emailAddress) throws DataAccessException {
         if (isNotBlank(username) && isNotBlank(emailAddress)) {
@@ -285,7 +325,7 @@ public class UserDao extends AbstractDao<User> {
                 Integer ct = getJdbcTemplate().queryForObject(countByUsernameOrEmailAddressSQL, Integer.class, username, emailAddress);
                 return ct != null && ct > 0;
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "checkExists", e.getMessage(), username, emailAddress);
             }
         }
@@ -293,6 +333,14 @@ public class UserDao extends AbstractDao<User> {
         return false;
     }
 
+    /**
+     * Sets the verification status of a user with the specified username.
+     *
+     * @param username The username of the user to set the verification status for.
+     * @param isVerified The verification status to set (true for verified, false for unverified).
+     * @throws DataAccessException If an error occurs while accessing the data.
+     * @throws DataUpdateException If the update operation fails.
+     */
     @SuppressWarnings("unused")
     public void setVerified(String username, boolean isVerified) throws DataAccessException, DataUpdateException {
         if (isNotBlank(username)) {
@@ -300,7 +348,7 @@ public class UserDao extends AbstractDao<User> {
             try {
                 rowsUpdated = getJdbcTemplate().update(setVerifiedSQL, isVerified, username);
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "setVerified", e.getMessage(), username, isVerified);
             }
             if (!(rowsUpdated > 0)) {
@@ -309,7 +357,13 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
-
+    /**
+     * Updates the authentication claim of a user.
+     *
+     * @param user The user for which to update the authentication claim.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     * @throws DataUpdateException If the update operation fails.
+     */
     @SuppressWarnings("unused")
     public void updateAuthClaim(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
@@ -317,7 +371,7 @@ public class UserDao extends AbstractDao<User> {
             try {
                 rowsUpdated = getJdbcTemplate().update(updateAuthClaimSql, user.getAuthClaim(), user.getId());
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateAuthClaim", e.getMessage(), user.getAuthClaim(), user.getId());
             }
             if (!(rowsUpdated > 0)) {
@@ -326,7 +380,13 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
-
+    /**
+     * Updates the password reset claim of a user.
+     *
+     * @param user The user for which to update the password reset claim.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     * @throws DataUpdateException If the update operation fails.
+     */
     @SuppressWarnings("unused")
     public void updatePwResetClaim(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
@@ -334,7 +394,7 @@ public class UserDao extends AbstractDao<User> {
             try {
                 rowsUpdated = getJdbcTemplate().update(updatePwResetClaimSql, user.getPwResetClaim(), user.getId());
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updatePwResetClaim", e.getMessage(), user.getPwResetClaim(), user.getId());
             }
             if (!(rowsUpdated > 0)) {
@@ -343,6 +403,13 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
+    /**
+     * Updates the verification claim of a user.
+     *
+     * @param user The user for which to update the verification claim.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     * @throws DataUpdateException If the update operation fails.
+     */
     @SuppressWarnings("unused")
     public void updateVerificationClaim(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
@@ -350,7 +417,7 @@ public class UserDao extends AbstractDao<User> {
             try {
                 rowsUpdated = getJdbcTemplate().update(updateVerificationClaimSql, user.getVerificationClaim(), user.getId());
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateVerificationClaim", e.getMessage(), user.getVerificationClaim(), user.getId());
             }
             if (!(rowsUpdated > 0)) {
@@ -359,7 +426,13 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
-
+    /**
+     * Updates the password reset authentication claim of a user.
+     *
+     * @param user The user for which to update the password reset authentication claim.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     * @throws DataUpdateException If the update operation fails.
+     */
     @SuppressWarnings("unused")
     public void updatePwResetAuthClaim(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
@@ -367,7 +440,7 @@ public class UserDao extends AbstractDao<User> {
             try {
                 rowsUpdated = getJdbcTemplate().update(updatePwResetAuthClaimSql, user.getPwResetAuthClaim(), user.getId());
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updatePwResetAuthClaim", e.getMessage(), user.getPwResetAuthClaim(), user.getId());
             }
             if (!(rowsUpdated > 0)) {
@@ -376,6 +449,13 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
+    /**
+     * Updates the password of a user.
+     *
+     * @param user The user for which to update the password.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     * @throws DataUpdateException If the update operation fails.
+     */
     @SuppressWarnings("unused")
     public void updatePassword(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
@@ -383,7 +463,7 @@ public class UserDao extends AbstractDao<User> {
             try {
                 rowsUpdated = getJdbcTemplate().update(updatePasswordSql, user.getPassword(), user.getId());
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updatePassword", e.getMessage(), user.getId()); // password not shown
             }
             if (!(rowsUpdated > 0)) {
@@ -392,6 +472,13 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
+    /**
+     * Updates the email address of a user.
+     *
+     * @param user The user for which to update the email address.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     * @throws DataUpdateException If the update operation fails.
+     */
     @SuppressWarnings("unused")
     public void updateEmailAddress(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
@@ -399,7 +486,7 @@ public class UserDao extends AbstractDao<User> {
             try {
                 rowsUpdated = getJdbcTemplate().update(updateEmailAddressSql, user.getEmailAddress());
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateEmailAddress", e.getMessage(), user.getId(), user.getEmailAddress());
             }
             if (!(rowsUpdated > 0)) {
@@ -408,6 +495,13 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
+    /**
+     * Updates the customer ID of a user.
+     *
+     * @param user The user for which to update the customer ID.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     * @throws DataUpdateException If the update operation fails.
+     */
     @SuppressWarnings("unused")
     public void updateCustomerId(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
@@ -415,7 +509,7 @@ public class UserDao extends AbstractDao<User> {
             try {
                 rowsUpdated = getJdbcTemplate().update(updateCustomerIdSql, user.getCustomerId(), user.getId());
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateCustomerId", e.getMessage(), user.getId(), user.getEmailAddress());
             }
             if (!(rowsUpdated > 0)) {
@@ -424,6 +518,13 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
+    /**
+     * Updates the subscription status of a user.
+     *
+     * @param user The user for which to update the subscription status.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     * @throws DataUpdateException If the update operation fails.
+     */
     @SuppressWarnings("unused")
     public void updateSubscriptionStatus(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
@@ -431,7 +532,7 @@ public class UserDao extends AbstractDao<User> {
             try {
                 rowsUpdated = getJdbcTemplate().update(updateSubscriptionStatusSql, user.getSubscriptionStatus(), user.getId());
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateSubscriptionStatus", e.getMessage(), user.getId(), user.getSubscriptionStatus());
             }
             if (!(rowsUpdated > 0)) {
@@ -440,6 +541,13 @@ public class UserDao extends AbstractDao<User> {
         }
     }
 
+    /**
+     * Updates the subscription expiration date of a user.
+     *
+     * @param user The user for which to update the subscription expiration date.
+     * @throws DataAccessException If an error occurs while accessing the data.
+     * @throws DataUpdateException If the update operation fails.
+     */
     @SuppressWarnings("unused")
     public void updateSubscriptionExpDate(User user) throws DataAccessException, DataUpdateException {
         if (user != null) {
@@ -447,7 +555,7 @@ public class UserDao extends AbstractDao<User> {
             try {
                 rowsUpdated = getJdbcTemplate().update(updateSubscriptionExpDateSql, toTimestamp(user.getSubscriptionExpDate()), user.getId());
             } catch (Exception e) {
-                log.error("Something horrible happened due to: {}", e.getMessage(), e);
+                log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateSubscriptionExpDate", e.getMessage(), user.getId(), user.getSubscriptionExpDate());
             }
             if (!(rowsUpdated > 0)) {

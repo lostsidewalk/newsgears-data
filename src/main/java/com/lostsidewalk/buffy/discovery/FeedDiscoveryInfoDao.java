@@ -26,6 +26,9 @@ import static java.sql.Types.INTEGER;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 
+/**
+ * Data access object for managing feed discovery information in the application.
+ */
 @Slf4j
 @Component
 public class FeedDiscoveryInfoDao {
@@ -163,24 +166,36 @@ public class FeedDiscoveryInfoDao {
 
     private static final String FIND_ALL_SQL = "select * from feed_discovery_info";
 
+    /**
+     * Retrieves all feed discovery information stored in the database.
+     *
+     * @return A list of FeedDiscoveryInfo objects.
+     * @throws DataAccessException If there is an issue accessing the data.
+     */
     @SuppressWarnings("unused")
     public List<FeedDiscoveryInfo> findAll() throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_ALL_SQL, FEED_DISCOVERY_INFO_ROW_MAPPER);
         } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "findAll", e.getMessage());
         }
     }
 
     private static final String FIND_DISCOVERABLE_SQL = "select * from feed_discovery_info where error_type is null";
 
+    /**
+     * Retrieves all discoverable feed discovery information stored in the database.
+     *
+     * @return A list of FeedDiscoveryInfo objects.
+     * @throws DataAccessException If there is an issue accessing the data.
+     */
     @SuppressWarnings("unused")
     public List<FeedDiscoveryInfo> findDiscoverable() throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_DISCOVERABLE_SQL, FEED_DISCOVERY_INFO_ROW_MAPPER);
         } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "findAll", e.getMessage());
         }
     }
@@ -215,6 +230,13 @@ public class FeedDiscoveryInfoDao {
             "error_detail = ? " +
         "where id = ?";
 
+    /**
+     * Updates feed discovery information in the database.
+     *
+     * @param feedDiscoveryInfo The FeedDiscoveryInfo object to update.
+     * @throws DataAccessException If there is an issue accessing the data.
+     * @throws DataUpdateException If the update operation fails.
+     */
     @SuppressWarnings("unused")
     public void update(FeedDiscoveryInfo feedDiscoveryInfo) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
@@ -265,7 +287,7 @@ public class FeedDiscoveryInfoDao {
                 ps.setLong(28, feedDiscoveryInfo.getId());
             });
         } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "update", e.getMessage(), feedDiscoveryInfo);
         }
         if (!(rowsUpdated > 0)) {

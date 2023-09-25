@@ -2,6 +2,7 @@ package com.lostsidewalk.buffy;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,9 @@ import static java.util.Arrays.stream;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * Data access object for managing framework configuration data in the application.
+ */
 @Component
 @Slf4j
 public class FrameworkConfigDao {
@@ -27,12 +31,23 @@ public class FrameworkConfigDao {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    FrameworkConfigDao() {
+        super();
+    }
+
     private static final String SELECT_BY_USER_ID_SQL = "select settings_group,attr_name,attr_value from framework_config where user_id = ?";
 
     private static final String DELETE_SETTINGS_GROUP_BY_USER_ID_SQL = "delete from framework_config where user_id = ? and settings_group = ?";
 
     private static final String INSERT_SQL = "insert into framework_config (user_id, settings_group, attr_name, attr_value) values (?,?,?,?)";
 
+    /**
+     * Retrieves a FrameworkConfig object associated with a specified user ID.
+     *
+     * @param userId The ID of the user for which to retrieve the FrameworkConfig.
+     * @return A FrameworkConfig object containing user-specific configuration settings.
+     * @throws DataAccessException If there is an issue accessing the data.
+     */
     @SuppressWarnings("unused")
     public final FrameworkConfig findByUserId(Long userId) throws DataAccessException {
         try {
@@ -76,7 +91,7 @@ public class FrameworkConfigDao {
 
             return frameworkConfig;
         } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "findByUserId", e.getMessage(), userId);
         }
     }
@@ -108,16 +123,26 @@ public class FrameworkConfigDao {
         } catch (SQLException ignored) {}
     }
 
+    /**
+     * Saves a FrameworkConfig object, updating user-specific configuration settings in the database.
+     *
+     * @param frameworkConfig The FrameworkConfig object containing user-specific configuration settings to save.
+     * @throws DataAccessException  If there is an issue accessing the data.
+     * @throws DataUpdateException If there is an issue updating the data.
+     * @throws DataConflictException If a data conflict occurs during the save operation.
+     */
     @SuppressWarnings("unused")
-    public final void save(FrameworkConfig frameworkConfig) throws DataAccessException, DataUpdateException {
+    public final void save(FrameworkConfig frameworkConfig) throws DataAccessException, DataUpdateException, DataConflictException {
         int rowsAffected;
         try {
             Long userId = frameworkConfig.getUserId();
             // insert the notification config; remove entries w/null values first
             rowsAffected = doSettingsGroup(userId, NOTIFICATION_CONFIG, cleanSettingsGroup(frameworkConfig.getNotifications()));
             rowsAffected += doSettingsGroup(userId, DISPLAY_CONFIG, cleanSettingsGroup(frameworkConfig.getDisplay()));
+        } catch (DuplicateKeyException e) {
+            throw new DataConflictException(getClass().getSimpleName(), "update", e.getMessage(), frameworkConfig);
         } catch (Exception e) {
-            log.error("Something horrible happened due to: {}", e.getMessage(), e);
+            log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "save", e.getMessage(), frameworkConfig);
         }
         if (!(rowsAffected > 0)) {
