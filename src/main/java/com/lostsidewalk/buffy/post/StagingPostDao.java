@@ -28,7 +28,6 @@ import java.time.ZoneId;
 import java.util.*;
 
 import static com.lostsidewalk.buffy.post.StagingPost.computeThumbnailHash;
-import static java.lang.Integer.toUnsignedLong;
 import static java.sql.Types.INTEGER;
 import static java.util.Arrays.stream;
 import static java.util.Collections.emptyList;
@@ -211,8 +210,7 @@ public class StagingPostDao {
         if (!(rowsUpdated > 0)) {
             throw new DataUpdateException(getClass().getSimpleName(), "add", stagingPost);
         }
-        Integer key = keyHolder.getKeyAs(Integer.class);
-        return key == null ? null : toUnsignedLong(key);
+        return keyHolder.getKeyAs(Long.class);
     }
 
     private final RowMapper<StagingPost> STAGING_POST_ROW_MAPPER = (rs, rowNum) -> {

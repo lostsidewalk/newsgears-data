@@ -17,7 +17,6 @@ import java.sql.PreparedStatement;
 import java.util.List;
 
 import static com.google.common.collect.Lists.newArrayListWithCapacity;
-import static java.lang.Integer.toUnsignedLong;
 import static java.util.Arrays.stream;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
@@ -107,8 +106,7 @@ public class SubscriptionDefinitionDao {
         if (!(rowsUpdated > 0)) {
             throw new DataUpdateException(getClass().getSimpleName(), "add", subscriptionDefinition);
         }
-        Integer key = keyHolder.getKeyAs(Integer.class);
-        return key == null ? null : toUnsignedLong(key);
+        return keyHolder.getKeyAs(Long.class);
     }
 
     /**
