@@ -16,6 +16,8 @@ import java.sql.PreparedStatement;
 import java.sql.Timestamp;
 import java.util.List;
 
+import static java.lang.Integer.toUnsignedLong;
+
 /**
  * Data access object for managing queue credentials in the application.
  */
@@ -68,7 +70,8 @@ public class QueueCredentialDao {
         if (!(rowsUpdated > 0)) {
             throw new DataUpdateException(getClass().getSimpleName(), "add", queueId, username, basicUsername);
         }
-        return keyHolder.getKeyAs(Long.class);
+        Integer key = keyHolder.getKeyAs(Integer.class);
+        return key == null ? null : toUnsignedLong(key);
     }
 
     final RowMapper<QueueCredential> QUEUE_CREDENTIAL_ROW_MAPPER = (rs, rowNum) -> {

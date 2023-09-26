@@ -52,7 +52,7 @@ create table queue_definitions (
     last_deployed_timestamp timestamp with time zone,
     is_deleted boolean not null default false,
     is_authenticated boolean not null default false,
-    created timestamp with time zone not null,
+    created timestamp with time zone not null default current_timestamp,
     last_modified timestamp with time zone,
 
     unique(username, queue_ident),
@@ -70,7 +70,7 @@ create table queue_credentials (
     username varchar(100) not null references users(name) on delete cascade,
     basic_username varchar(100) not null,
     basic_password varchar(256) not null,
-    created timestamp with time zone not null,
+    created timestamp with time zone not null default current_timestamp,
     last_modified timestamp with time zone,
     unique(queue_id, basic_username),
 
@@ -116,7 +116,7 @@ create table staging_posts (
     expiration_timestamp timestamp with time zone,
     enclosures json,
     last_updated_timestamp timestamp with time zone,
-    created timestamp with time zone not null,
+    created timestamp with time zone not null default current_timestamp,
     last_modified timestamp with time zone,
 
     unique(queue_id, post_hash),

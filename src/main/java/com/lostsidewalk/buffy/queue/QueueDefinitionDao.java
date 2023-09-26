@@ -28,6 +28,7 @@ import java.util.Date;
 import java.util.List;
 
 import static com.lostsidewalk.buffy.queue.QueueDefinition.computeImageHash;
+import static java.lang.Integer.toUnsignedLong;
 import static java.util.Optional.ofNullable;
 
 /**
@@ -147,7 +148,8 @@ public class QueueDefinitionDao {
         if (!(rowsUpdated > 0)) {
             throw new DataUpdateException(getClass().getSimpleName(), "add", queueDefinition);
         }
-        return keyHolder.getKeyAs(Long.class);
+        Integer key = keyHolder.getKeyAs(Integer.class);
+        return key == null ? null : toUnsignedLong(key);
     }
 
     final RowMapper<QueueDefinition> QUEUE_DEFINITION_ROW_MAPPER = (rs, rowNum) -> {

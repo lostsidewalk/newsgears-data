@@ -1,6 +1,5 @@
 package com.lostsidewalk.buffy.subscription;
 
-import com.google.common.collect.Lists;
 import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.DataConflictException;
 import com.lostsidewalk.buffy.DataUpdateException;
@@ -17,6 +16,8 @@ import org.springframework.stereotype.Component;
 import java.sql.PreparedStatement;
 import java.util.List;
 
+import static com.google.common.collect.Lists.newArrayListWithCapacity;
+import static java.lang.Integer.toUnsignedLong;
 import static java.util.Arrays.stream;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
@@ -106,7 +107,8 @@ public class SubscriptionDefinitionDao {
         if (!(rowsUpdated > 0)) {
             throw new DataUpdateException(getClass().getSimpleName(), "add", subscriptionDefinition);
         }
-        return keyHolder.getKeyAs(Long.class);
+        Integer key = keyHolder.getKeyAs(Integer.class);
+        return key == null ? null : toUnsignedLong(key);
     }
 
     /**
@@ -121,7 +123,7 @@ public class SubscriptionDefinitionDao {
     @SuppressWarnings("unused")
     public List<Long> add(List<SubscriptionDefinition> subscriptionDefinitions) throws DataAccessException, DataUpdateException, DataConflictException {
 
-        List<Long> newIds = Lists.newArrayListWithCapacity(size(subscriptionDefinitions));
+        List<Long> newIds = newArrayListWithCapacity(size(subscriptionDefinitions));
         for (SubscriptionDefinition q : subscriptionDefinitions) {
             newIds.add(add(q));
         }
