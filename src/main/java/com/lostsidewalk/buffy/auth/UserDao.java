@@ -40,6 +40,13 @@ public class UserDao extends AbstractDao<User> {
     @Value("${newsgears.data.apikeys.table}")
     String apiKeysTableName;
 
+    /**
+     * Default constructor; initializes the object.
+     */
+    UserDao() {
+        super();
+    }
+
     private static final String FIND_BY_EMAIL_ADDRESS_SQL = "select * from %s u where email_address = ? and application_id = '%s'";
     private static final String FIND_BY_CUSTOMER_ID_SQL = "select * from %s u where customer_id = ? and application_id = '%s'";
     private static final String FIND_BY_AUTH_PROVIDER_ID_SQL = "select * from %s u where auth_provider = ? and auth_provider_id = ? and application_id = '%s'";

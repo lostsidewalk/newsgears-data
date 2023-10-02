@@ -43,6 +43,13 @@ public class QueueDefinitionDao {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    /**
+     * Default constructor; initializes the object.
+     */
+    QueueDefinitionDao() {
+        super();
+    }
+
     private static final String REQUIRES_AUTHENTICATION_BY_TRANSPORT_IDENT_SQL = "select is_authenticated from queue_definitions where transport_ident = ?";
 
     /**

@@ -28,6 +28,13 @@ public class ApiKeyDao extends AbstractDao<ApiKey> {
     @Value("${newsgears.data.apikeys.table}")
     String tableName;
 
+    /**
+     * Default constructor; initializes the object.
+     */
+    ApiKeyDao() {
+        super();
+    }
+
     @Override
     protected void setupSQL() {
         this.findByUserIdSQL = String.format("select * from %s where user_id = ? and application_id = '%s'", getTableName(), this.applicationId);

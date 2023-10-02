@@ -32,6 +32,13 @@ public class RoleDao extends AbstractDao<Role> {
     @Value("${newsgears.data.uir.table}")
     String uirTableName;
 
+    /**
+     * Default constructor; initializes the object.
+     */
+    RoleDao() {
+        super();
+    }
+
     @Override
     protected void setupSQL() {
         this.findByUsernameSQL = String.format(

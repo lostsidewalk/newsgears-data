@@ -25,6 +25,13 @@ public class RenderedCatalogDao {
     RedisTemplate<String, Object> redisTemplate;
 
     /**
+     * Default constructor; initializes the object.
+     */
+    RenderedCatalogDao() {
+        super();
+    }
+
+    /**
      * Retrieves the entire rendered feed catalog as a list of RenderedFeedDiscoveryInfo objects.
      *
      * @return A list of RenderedFeedDiscoveryInfo objects representing the rendered feed catalog.

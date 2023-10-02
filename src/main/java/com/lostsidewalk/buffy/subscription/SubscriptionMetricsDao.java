@@ -26,6 +26,13 @@ public class SubscriptionMetricsDao {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    /**
+     * Default constructor; initializes the object.
+     */
+    SubscriptionMetricsDao() {
+        super();
+    }
+
     private static final String INSERT_SUBSCRIPTION_METRICS_SQL =
             "insert into subscription_metrics (" +
                     "subscription_id," +

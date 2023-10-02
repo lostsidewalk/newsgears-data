@@ -24,6 +24,14 @@ public class RenderedFeedDao {
 
     @Autowired
     RedisTemplate<String, Object> redisTemplate;
+
+    /**
+     * Default constructor; initializes the object.
+     */
+    RenderedFeedDao() {
+        super();
+    }
+
     //
     // RSS feed methods
     //

@@ -22,6 +22,13 @@ public class RenderedThumbnailDao {
     RedisTemplate<String, Object> redisTemplate;
 
     /**
+     * Default constructor; initializes the object.
+     */
+    RenderedThumbnailDao() {
+        super();
+    }
+
+    /**
      * Retrieves a rendered thumbnail image from Redis based on its transport identifier.
      *
      * @param transportIdent The transport identifier associated with the thumbnail to retrieve.

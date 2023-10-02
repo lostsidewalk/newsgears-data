@@ -22,6 +22,13 @@ public class FeatureDao {
     private final RowMapper<String> mapper = (rs, rowNum) -> rs.getString("feature_cd");
 
     /**
+     * Default constructor; initializes the object.
+     */
+    FeatureDao() {
+        super();
+    }
+
+    /**
      * Retrieves a list of feature codes associated with a specified role name.
      *
      * @param rolename The name of the role for which to retrieve associated feature codes.

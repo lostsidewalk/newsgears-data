@@ -40,6 +40,13 @@ public class FeedDiscoveryInfoDao {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    /**
+     * Default constructor; initializes the object.
+     */
+    FeedDiscoveryInfoDao() {
+        super();
+    }
+
     final RowMapper<FeedDiscoveryInfo> FEED_DISCOVERY_INFO_ROW_MAPPER = (rs, rowNum) -> {
         // id
         Long id = rs.getLong("id");

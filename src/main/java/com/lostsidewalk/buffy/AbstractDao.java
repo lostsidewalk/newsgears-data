@@ -72,6 +72,13 @@ public abstract class AbstractDao<T> {
     private static final String DEFAULT_NAME_ATTRIBUTE = "ident";
 
     /**
+     * Default constructor; initializes the object.
+     */
+    protected AbstractDao() {
+        super();
+    }
+
+    /**
      * Gets the name attribute used for identifying entities.
      *
      * @return The name attribute.

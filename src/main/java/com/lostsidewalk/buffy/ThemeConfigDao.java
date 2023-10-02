@@ -35,6 +35,13 @@ public class ThemeConfigDao {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    /**
+     * Default constructor; initializes the object.
+     */
+    ThemeConfigDao() {
+        super();
+    }
+
     final RowMapper<ThemeConfig> THEME_CONFIG_ROW_MAPPER = (rs, rowNum) -> {
         // light
         Map<String, String> lightTheme = null;

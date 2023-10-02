@@ -62,6 +62,13 @@ public class StagingPostDao {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    /**
+     * Default constructor; initializes the object.
+     */
+    StagingPostDao() {
+        super();
+    }
+
     private static final String CHECK_EXISTS_BY_HASH_SQL_TEMPLATE = "select exists(select id from staging_posts where post_hash = '%s')";
 
     /**

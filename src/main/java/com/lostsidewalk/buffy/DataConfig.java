@@ -35,6 +35,13 @@ public class DataConfig {
     int redisPort;
 
     /**
+     * Default constructor; initializes the object.
+     */
+    DataConfig() {
+        super();
+    }
+
+    /**
      * Configures and returns a JedisConnectionFactory bean for connecting to the Redis server.
      *
      * @return A JedisConnectionFactory instance.

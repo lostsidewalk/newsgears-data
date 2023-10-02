@@ -35,6 +35,13 @@ public class SubscriptionDefinitionDao {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    /**
+     * Default constructor; initializes the object.
+     */
+    SubscriptionDefinitionDao() {
+        super();
+    }
+
     private static final String CHECK_EXISTS_BY_URL_SQL = "select exists(select id from subscription_definitions where username = ? and url = ?)";
 
     /**

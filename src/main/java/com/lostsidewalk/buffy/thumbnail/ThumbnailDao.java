@@ -19,6 +19,13 @@ public class ThumbnailDao {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    /**
+     * Default constructor; initializes the object.
+     */
+    ThumbnailDao() {
+        super();
+    }
+
     private static final String FIND_ALL_SQL = "select img_src from thumbnails";
 
     final RowMapper<String> THUMBNAIL_ROW_MAPPER = (rs, rowNum) -> rs.getString("img_src");

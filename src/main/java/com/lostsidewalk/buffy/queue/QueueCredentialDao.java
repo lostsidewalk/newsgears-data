@@ -29,6 +29,13 @@ public class QueueCredentialDao {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    /**
+     * Default constructor; initializes the object.
+     */
+    QueueCredentialDao() {
+        super();
+    }
+    
     private static final String INSERT_QUEUE_CREDENTIALS_SQL =
             "insert into queue_credentials(queue_id, username, basic_username, basic_password, created) values (?,?,?,?,current_timestamp)";
 
