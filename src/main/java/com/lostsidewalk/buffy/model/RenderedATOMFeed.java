@@ -1,6 +1,7 @@
 package com.lostsidewalk.buffy.model;
 
 import com.rometools.rome.feed.atom.Feed;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serial;
@@ -10,7 +11,8 @@ import java.io.Serializable;
  * Represents a Rendered Atom Feed along with its associated transport identifier.
  * This class is used to store and retrieve Atom Feeds in Redis.
  */
-@RedisHash(value = "atomFeed")
+@Slf4j
+@RedisHash("atomFeed")
 public class RenderedATOMFeed implements Serializable {
 
     @Serial
@@ -49,7 +51,7 @@ public class RenderedATOMFeed implements Serializable {
      * @return The transport identifier.
      */
     @SuppressWarnings("unused")
-    public String getTransportIdent() {
+    public final String getTransportIdent() {
         return transportIdent;
     }
 
@@ -59,7 +61,7 @@ public class RenderedATOMFeed implements Serializable {
      * @param transportIdent The transport identifier to set.
      */
     @SuppressWarnings("unused")
-    public void setTransportIdent(String transportIdent) {
+    public final void setTransportIdent(String transportIdent) {
         this.transportIdent = transportIdent;
     }
 
@@ -69,7 +71,7 @@ public class RenderedATOMFeed implements Serializable {
      * @return The Atom Feed.
      */
     @SuppressWarnings("unused")
-    public Feed getFeed() {
+    public final Feed getFeed() {
         return feed;
     }
 
@@ -79,7 +81,15 @@ public class RenderedATOMFeed implements Serializable {
      * @param feed The Atom Feed to set.
      */
     @SuppressWarnings("unused")
-    public void setFeed(Feed feed) {
+    public final void setFeed(Feed feed) {
         this.feed = feed;
+    }
+
+    @Override
+    public final String toString() {
+        return "RenderedATOMFeed{" +
+                "transportIdent='" + transportIdent + '\'' +
+                ", feed=" + feed +
+                '}';
     }
 }

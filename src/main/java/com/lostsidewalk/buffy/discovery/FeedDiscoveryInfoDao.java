@@ -18,7 +18,6 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -29,12 +28,14 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 /**
  * Data access object for managing feed discovery information in the application.
  */
+@SuppressWarnings("OverlyBroadCatchBlock")
 @Slf4j
 @Component
 public class FeedDiscoveryInfoDao {
 
     private static final Gson GSON = new Gson();
 
+    @SuppressWarnings({"EmptyClass", "AnonymousInnerClass"})
     private static final Type LIST_STRING_TYPE = new TypeToken<List<String>>() {}.getType();
 
     @Autowired
@@ -44,10 +45,9 @@ public class FeedDiscoveryInfoDao {
      * Default constructor; initializes the object.
      */
     FeedDiscoveryInfoDao() {
-        super();
     }
 
-    final RowMapper<FeedDiscoveryInfo> FEED_DISCOVERY_INFO_ROW_MAPPER = (rs, rowNum) -> {
+    private final RowMapper<FeedDiscoveryInfo> FEED_DISCOVERY_INFO_ROW_MAPPER = (rs, rowNum) -> {
         // id
         Long id = rs.getLong("id");
         // feed URL
@@ -65,14 +65,14 @@ public class FeedDiscoveryInfoDao {
         // title
         String titleStr = null;
         PGobject titleObj = (PGobject) rs.getObject("title");
-        if (titleObj != null) {
+        if (null != titleObj) {
             titleStr = titleObj.getValue();
         }
         ContentObject title = GSON.fromJson(titleStr, ContentObject.class);
         // description
         String descriptionStr = null;
         PGobject descriptionObj = (PGobject) rs.getObject("description");
-        if (descriptionObj != null) {
+        if (null != descriptionObj) {
             descriptionStr = descriptionObj.getValue();
         }
         ContentObject description = GSON.fromJson(descriptionStr, ContentObject.class);
@@ -91,14 +91,14 @@ public class FeedDiscoveryInfoDao {
         // image
         String imageStr = null;
         PGobject imageObj = (PGobject) rs.getObject("image");
-        if (imageObj != null) {
+        if (null != imageObj) {
             imageStr = imageObj.getValue();
         }
         FeedDiscoveryImageInfo image = GSON.fromJson(imageStr, FeedDiscoveryImageInfo.class);
         // icon
         String iconStr = null;
         PGobject iconObj = (PGobject) rs.getObject("icon");
-        if (iconObj != null) {
+        if (null != iconObj) {
             iconStr = iconObj.getValue();
         }
         FeedDiscoveryImageInfo icon = GSON.fromJson(iconStr, FeedDiscoveryImageInfo.class);
@@ -113,10 +113,10 @@ public class FeedDiscoveryInfoDao {
         // supported_types
         String supportedTypesStr = null;
         PGobject supportedTypesObj = (PGobject) rs.getObject("supported_types");
-        if (supportedTypesObj != null) {
+        if (null != supportedTypesObj) {
             supportedTypesStr = supportedTypesObj.getValue();
         }
-        ArrayList<String> supportedTypes = GSON.fromJson(supportedTypesStr, LIST_STRING_TYPE);
+        List<String> supportedTypes = GSON.fromJson(supportedTypesStr, LIST_STRING_TYPE);
         // web_master
         String webMaster = rs.getString("web_master");
         // uri
@@ -124,10 +124,10 @@ public class FeedDiscoveryInfoDao {
         // categories
         String categoriesStr = null;
         PGobject categoriesObj = (PGobject) rs.getObject("categories");
-        if (categoriesObj != null) {
+        if (null != categoriesObj) {
             categoriesStr = categoriesObj.getValue();
         }
-        ArrayList<String> categories = GSON.fromJson(categoriesStr, LIST_STRING_TYPE);
+        List<String> categories = GSON.fromJson(categoriesStr, LIST_STRING_TYPE);
         // is_url_upgradeable
         boolean isUrlUpgradable = rs.getBoolean("is_url_upgradeable");
         // error type
@@ -135,7 +135,7 @@ public class FeedDiscoveryInfoDao {
         // error detail
         String errorDetail = rs.getString("error_detail");
 
-        FeedDiscoveryInfo i = FeedDiscoveryInfo.from(
+        FeedDiscoveryInfo feedDiscoveryInfo = FeedDiscoveryInfo.from(
                 feedUrl,
                 httpStatusCode,
                 httpStatusMessage,
@@ -164,11 +164,11 @@ public class FeedDiscoveryInfoDao {
                 null,
                 isUrlUpgradable
         );
-        i.setId(id);
-        i.setErrorType(ofNullable(errorType).map(e -> FeedDiscoveryExceptionType.valueOf(errorType)).orElse(null)); // TODO: safety
-        i.setErrorDetail(errorDetail);
+        feedDiscoveryInfo.setId(id);
+        feedDiscoveryInfo.setErrorType(ofNullable(errorType).map(e -> FeedDiscoveryExceptionType.valueOf(errorType)).orElse(null)); // TODO: safety
+        feedDiscoveryInfo.setErrorDetail(errorDetail);
 
-        return i;
+        return feedDiscoveryInfo;
     };
 
     private static final String FIND_ALL_SQL = "select * from feed_discovery_info";
@@ -180,7 +180,7 @@ public class FeedDiscoveryInfoDao {
      * @throws DataAccessException If there is an issue accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<FeedDiscoveryInfo> findAll() throws DataAccessException {
+    public final List<FeedDiscoveryInfo> findAll() throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_ALL_SQL, FEED_DISCOVERY_INFO_ROW_MAPPER);
         } catch (Exception e) {
@@ -198,7 +198,7 @@ public class FeedDiscoveryInfoDao {
      * @throws DataAccessException If there is an issue accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<FeedDiscoveryInfo> findDiscoverable() throws DataAccessException {
+    public final List<FeedDiscoveryInfo> findDiscoverable() throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_DISCOVERABLE_SQL, FEED_DISCOVERY_INFO_ROW_MAPPER);
         } catch (Exception e) {
@@ -245,14 +245,14 @@ public class FeedDiscoveryInfoDao {
      * @throws DataUpdateException If the update operation fails.
      */
     @SuppressWarnings("unused")
-    public void update(FeedDiscoveryInfo feedDiscoveryInfo) throws DataAccessException, DataUpdateException {
+    public final void update(FeedDiscoveryInfo feedDiscoveryInfo) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_FEED_DISCOVERY_INFO_SQL, ps -> {
                 // feed_url
                 ps.setString(1, feedDiscoveryInfo.getFeedUrl());
                 // http status code
-                if (feedDiscoveryInfo.getHttpStatusCode() == null) {
+                if (null == feedDiscoveryInfo.getHttpStatusCode()) {
                     ps.setNull(2, INTEGER);
                 } else {
                     ps.setInt(2, feedDiscoveryInfo.getHttpStatusCode());
@@ -262,7 +262,7 @@ public class FeedDiscoveryInfoDao {
                 // redirect feed URL
                 ps.setString(4, feedDiscoveryInfo.getRedirectFeedUrl());
                 // redirect http status code
-                if (feedDiscoveryInfo.getRedirectHttpStatusCode() == null) {
+                if (null == feedDiscoveryInfo.getRedirectHttpStatusCode()) {
                     ps.setNull(5, INTEGER);
                 } else {
                     ps.setInt(5, feedDiscoveryInfo.getRedirectHttpStatusCode());
@@ -297,7 +297,7 @@ public class FeedDiscoveryInfoDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "update", e.getMessage(), feedDiscoveryInfo);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "update", feedDiscoveryInfo);
         }
     }
@@ -308,8 +308,16 @@ public class FeedDiscoveryInfoDao {
 
     private static final ZoneId ZONE_ID = ZoneId.systemDefault();
 
-    private static Timestamp toTimestamp(Date d) {
-        Instant i = d != null ? OffsetDateTime.from(d.toInstant().atZone(ZONE_ID)).toInstant() : null;
-        return i != null ? Timestamp.from(i) : null;
+    private static Timestamp toTimestamp(Date date) {
+        Instant instant = null != date ? OffsetDateTime.from(date.toInstant().atZone(ZONE_ID)).toInstant() : null;
+        return null != instant ? Timestamp.from(instant) : null;
+    }
+
+    @Override
+    public final String toString() {
+        return "FeedDiscoveryInfoDao{" +
+                "jdbcTemplate=" + jdbcTemplate +
+                ", FEED_DISCOVERY_INFO_ROW_MAPPER=" + FEED_DISCOVERY_INFO_ROW_MAPPER +
+                '}';
     }
 }

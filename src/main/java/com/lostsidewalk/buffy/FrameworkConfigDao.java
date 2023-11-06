@@ -7,10 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +21,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * Data access object for managing framework configuration data in the application.
  */
+@SuppressWarnings("OverlyBroadCatchBlock")
 @Component
 @Slf4j
 public class FrameworkConfigDao {
@@ -32,7 +30,6 @@ public class FrameworkConfigDao {
     private JdbcTemplate jdbcTemplate;
 
     FrameworkConfigDao() {
-        super();
     }
 
     private static final String SELECT_BY_USER_ID_SQL = "select settings_group,attr_name,attr_value from framework_config where user_id = ?";
@@ -58,26 +55,27 @@ public class FrameworkConfigDao {
             PreparedStatement ps = null;
             ResultSet rs = null;
             DataSource dataSource = jdbcTemplate.getDataSource();
-            if (dataSource != null) {
+            if (null != dataSource) {
                 Connection conn = null;
                 try {
                     conn = dataSource.getConnection();
                     ps = conn.prepareStatement(SELECT_BY_USER_ID_SQL);
                     ps.setLong(1, userId);
                     rs = ps.executeQuery();
-                    Map<String, String> notificationConfig = new HashMap<>();
-                    Map<String, String> displayConfig = new HashMap<>();
+                    Map<String, String> notificationConfig = new HashMap<>(16);
+                    Map<String, String> displayConfig = new HashMap<>(16);
                     while (rs.next()) {
                         String _settingsGroup = rs.getString("settings_group");
                         String _attrName = rs.getString("attr_name");
                         String _attrValue = rs.getString("attr_value");
-                        Map<String, String> m = null;
+                        Map<String, String> map = null;
+                        //noinspection SwitchStatement
                         switch (_settingsGroup) {
-                            case NOTIFICATION_CONFIG -> m = notificationConfig;
-                            case DISPLAY_CONFIG -> m = displayConfig;
+                            case NOTIFICATION_CONFIG -> map = notificationConfig;
+                            case DISPLAY_CONFIG -> map = displayConfig;
                         }
-                        if (m != null) {
-                            m.put(_attrName, _attrValue);
+                        if (null != map) {
+                            map.put(_attrName, _attrValue);
                         }
                     }
                     frameworkConfig.setNotifications(notificationConfig);
@@ -97,7 +95,7 @@ public class FrameworkConfigDao {
     }
 
     private static void closeQuietly(Connection conn) {
-        if (conn == null) {
+        if (null == conn) {
             return;
         }
         try {
@@ -105,8 +103,8 @@ public class FrameworkConfigDao {
         } catch (SQLException ignored) {}
     }
 
-    private static void closeQuietly(PreparedStatement ps) {
-        if (ps == null) {
+    private static void closeQuietly(Statement ps) {
+        if (null == ps) {
             return;
         }
         try {
@@ -115,7 +113,7 @@ public class FrameworkConfigDao {
     }
 
     private static void closeQuietly(ResultSet rs) {
-        if (rs == null) {
+        if (null == rs) {
             return;
         }
         try {
@@ -145,12 +143,12 @@ public class FrameworkConfigDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "save", e.getMessage(), frameworkConfig);
         }
-        if (!(rowsAffected > 0)) {
+        if (!(0 < rowsAffected)) {
             throw new DataUpdateException(getClass().getSimpleName(), "save", frameworkConfig);
         }
     }
 
-    private Map<String, String> cleanSettingsGroup(Map<String, String> settingsGroup) {
+    private static Map<String, String> cleanSettingsGroup(Map<String, String> settingsGroup) {
         settingsGroup.values().removeAll(singleton(null));
         return settingsGroup;
     }
@@ -161,10 +159,17 @@ public class FrameworkConfigDao {
         List<Object[]> batchArgs = attributes.entrySet().stream().map(e -> new Object[] {
             userId, settingsGroup, e.getKey(), e.getValue()
         }).collect(toList());
-        return stream(this.jdbcTemplate.batchUpdate(INSERT_SQL, batchArgs)).sum();
+        return stream(jdbcTemplate.batchUpdate(INSERT_SQL, batchArgs)).sum();
     }
 
     private void clearSettingsGroup(Long userId, String settingsGroup) {
         jdbcTemplate.update(DELETE_SETTINGS_GROUP_BY_USER_ID_SQL, userId, settingsGroup);
+    }
+
+    @Override
+    public final String toString() {
+        return "FrameworkConfigDao{" +
+                "jdbcTemplate=" + jdbcTemplate +
+                '}';
     }
 }

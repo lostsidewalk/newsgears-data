@@ -12,6 +12,7 @@ import java.util.List;
 /**
  * Data access object for managing feature definitions in the application.
  */
+@SuppressWarnings("OverlyBroadCatchBlock")
 @Slf4j
 @Component
 public class FeatureDao {
@@ -25,7 +26,6 @@ public class FeatureDao {
      * Default constructor; initializes the object.
      */
     FeatureDao() {
-        super();
     }
 
     /**
@@ -36,7 +36,7 @@ public class FeatureDao {
      * @throws DataAccessException If there is an issue accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<String> findByRolename(String rolename) throws DataAccessException {
+    public final List<String> findByRolename(String rolename) throws DataAccessException {
         String findByRoleNameSql = "select feature_cd from features_in_roles fir "
                 + " join roles r on r.name = fir.role "
                 + " where r.name = ?";
@@ -46,5 +46,13 @@ public class FeatureDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "findByRoleName", e.getMessage(), rolename);
         }
+    }
+
+    @Override
+    public final String toString() {
+        return "FeatureDao{" +
+                "jdbcTemplate=" + jdbcTemplate +
+                ", mapper=" + mapper +
+                '}';
     }
 }

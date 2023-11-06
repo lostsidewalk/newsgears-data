@@ -21,7 +21,7 @@ import static java.lang.Integer.toUnsignedLong;
 /**
  * Data access object for managing queue credentials in the application.
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "OverlyBroadCatchBlock"})
 @Slf4j
 @Component
 public class QueueCredentialDao {
@@ -33,7 +33,6 @@ public class QueueCredentialDao {
      * Default constructor; initializes the object.
      */
     QueueCredentialDao() {
-        super();
     }
     
     private static final String INSERT_QUEUE_CREDENTIALS_SQL =
@@ -50,7 +49,7 @@ public class QueueCredentialDao {
      * @throws DataConflictException If a data conflict or duplication is encountered during the insertion.
      */
     @SuppressWarnings("unused")
-    public Long add(QueueCredential queueCredential) throws DataAccessException, DataUpdateException, DataConflictException {
+    public final Long add(QueueCredential queueCredential) throws DataAccessException, DataUpdateException, DataConflictException {
         Long queueId = queueCredential.getQueueId();
         String username = queueCredential.getUsername();
         String basicUsername = queueCredential.getBasicUsername();
@@ -74,14 +73,14 @@ public class QueueCredentialDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "add", e.getMessage(), queueId, username, basicUsername);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "add", queueId, username, basicUsername);
         }
         Integer key = keyHolder.getKeyAs(Integer.class);
-        return key == null ? null : toUnsignedLong(key);
+        return null == key ? null : toUnsignedLong(key);
     }
 
-    final RowMapper<QueueCredential> QUEUE_CREDENTIAL_ROW_MAPPER = (rs, rowNum) -> {
+    private final RowMapper<QueueCredential> QUEUE_CREDENTIAL_ROW_MAPPER = (rs, rowNum) -> {
         Long id = rs.getLong("id");
         Long queueId = rs.getLong("queue_id");
         String username = rs.getString("username");
@@ -105,7 +104,7 @@ public class QueueCredentialDao {
      * @throws DataAccessException If a data access error occurs.
      */
     @SuppressWarnings("unused")
-    public QueueCredential findById(String username, Long queueId, Long credentialId) throws DataAccessException {
+    public final QueueCredential findById(String username, Long queueId, Long credentialId) throws DataAccessException {
         try {
             return jdbcTemplate.queryForObject(FIND_BY_ID_SQL, new Object[] { username, queueId }, QUEUE_CREDENTIAL_ROW_MAPPER);
         } catch (Exception e) {
@@ -125,7 +124,7 @@ public class QueueCredentialDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<QueueCredential> findByQueueId(String username, Long queueId) throws DataAccessException {
+    public final List<QueueCredential> findByQueueId(String username, Long queueId) throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_BY_QUEUE_ID_SQL, new Object[] { username, queueId }, QUEUE_CREDENTIAL_ROW_MAPPER);
         } catch (Exception e) {
@@ -144,7 +143,7 @@ public class QueueCredentialDao {
      * @return A QueueCredential object if found, or null if not found.
      * @throws DataAccessException If an error occurs while accessing the data.
      */    @SuppressWarnings("unused")
-    public QueueCredential findByRemoteUsername(Long queueId, String remoteUsername) throws DataAccessException {
+    public final QueueCredential findByRemoteUsername(Long queueId, String remoteUsername) throws DataAccessException {
         try {
             return jdbcTemplate.queryForObject(FIND_BY_REMOTE_USERNAME_SQL, new Object[] { queueId, remoteUsername }, QUEUE_CREDENTIAL_ROW_MAPPER);
         } catch (Exception e) {
@@ -164,7 +163,7 @@ public class QueueCredentialDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void deleteByQueueId(String username, Long queueId) throws DataAccessException, DataUpdateException {
+    public final void deleteByQueueId(String username, Long queueId) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(DELETE_BY_QUEUE_ID, username, queueId);
@@ -172,7 +171,7 @@ public class QueueCredentialDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "deleteByQueueId", e.getMessage(), username, queueId);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "deleteByQueueId", username, queueId);
         }
     }
@@ -189,7 +188,7 @@ public class QueueCredentialDao {
      * @throws DataUpdateException If the deletion operation fails or no rows were affected.
      */
     @SuppressWarnings("unused")
-    public void deleteById(String username, Long queueId, Long credentialId) throws DataAccessException, DataUpdateException {
+    public final void deleteById(String username, Long queueId, Long credentialId) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(DELETE_BY_ID_SQL, username, queueId, credentialId);
@@ -197,7 +196,7 @@ public class QueueCredentialDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "deleteById", e.getMessage(), username, queueId, credentialId);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "deleteById", username, queueId, credentialId);
         }
     }
@@ -215,7 +214,7 @@ public class QueueCredentialDao {
      * @throws DataUpdateException If the update operation fails or no rows were affected.
      */
     @SuppressWarnings("unused")
-    public void updatePassword(String username, Long queueId, Long credentialId, String password) throws DataAccessException, DataUpdateException {
+    public final void updatePassword(String username, Long queueId, Long credentialId, String password) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_CREDENTIAL_BY_ID_SQL, password, username, queueId, credentialId);
@@ -223,8 +222,16 @@ public class QueueCredentialDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updatePassword", e.getMessage(), username, queueId, credentialId);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updatePassword", username, queueId, credentialId);
         }
+    }
+
+    @Override
+    public final String toString() {
+        return "QueueCredentialDao{" +
+                "jdbcTemplate=" + jdbcTemplate +
+                ", QUEUE_CREDENTIAL_ROW_MAPPER=" + QUEUE_CREDENTIAL_ROW_MAPPER +
+                '}';
     }
 }

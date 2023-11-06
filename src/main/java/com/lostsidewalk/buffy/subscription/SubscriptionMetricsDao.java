@@ -18,7 +18,7 @@ import static java.util.Optional.ofNullable;
 /**
  * Data access object for managing subscription metrics in the application.
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "OverlyBroadCatchBlock"})
 @Slf4j
 @Component
 public class SubscriptionMetricsDao {
@@ -30,7 +30,6 @@ public class SubscriptionMetricsDao {
      * Default constructor; initializes the object.
      */
     SubscriptionMetricsDao() {
-        super();
     }
 
     private static final String INSERT_SUBSCRIPTION_METRICS_SQL =
@@ -60,7 +59,7 @@ public class SubscriptionMetricsDao {
      * @throws DataUpdateException If the data update operation fails.
      */
     @SuppressWarnings("unused")
-    public void add(SubscriptionMetrics queryMetrics) throws DataAccessException, DataUpdateException {
+    public final void add(SubscriptionMetrics queryMetrics) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(INSERT_SUBSCRIPTION_METRICS_SQL,
@@ -83,13 +82,13 @@ public class SubscriptionMetricsDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "add", e.getMessage(), queryMetrics);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "add", queryMetrics);
         }
     }
 
     @SuppressWarnings("unused")
-    final RowMapper<SubscriptionMetrics> SUBSCRIPTION_METRICS_ROW_MAPPER = (rs, rowNum) -> {
+    private final RowMapper<SubscriptionMetrics> SUBSCRIPTION_METRICS_ROW_MAPPER = (rs, rowNum) -> {
         Long id = rs.getLong("id");
         Long subscriptionId = rs.getLong("subscription_id");
         Integer httpStatusCode = rs.wasNull() ? null : rs.getInt("http_status_code");
@@ -148,7 +147,7 @@ public class SubscriptionMetricsDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<SubscriptionMetrics> findAll() throws DataAccessException {
+    public final List<SubscriptionMetrics> findAll() throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_ALL_SQL, SUBSCRIPTION_METRICS_ROW_MAPPER);
         } catch (Exception e) {
@@ -168,7 +167,7 @@ public class SubscriptionMetricsDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<SubscriptionMetrics> findByQueueId(String username, Long queueId) throws DataAccessException {
+    public final List<SubscriptionMetrics> findByQueueId(String username, Long queueId) throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_BY_QUEUE_ID_SQL, new Object[] { queueId, username }, SUBSCRIPTION_METRICS_ROW_MAPPER);
         } catch (Exception e) {
@@ -188,7 +187,7 @@ public class SubscriptionMetricsDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<SubscriptionMetrics> findBySubscriptionId(String username, Long subscriptionId) throws DataAccessException {
+    public final List<SubscriptionMetrics> findBySubscriptionId(String username, Long subscriptionId) throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_BY_SUBSCRIPTION_ID_SQL, new Object[] { subscriptionId, username }, SUBSCRIPTION_METRICS_ROW_MAPPER);
         } catch (Exception e) {
@@ -207,7 +206,7 @@ public class SubscriptionMetricsDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<SubscriptionMetrics> findByUsername(String username) throws DataAccessException {
+    public final List<SubscriptionMetrics> findByUsername(String username) throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_BY_USERNAME_SQL, new Object[]{username}, SUBSCRIPTION_METRICS_ROW_MAPPER);
         } catch (Exception e) {
@@ -226,16 +225,16 @@ public class SubscriptionMetricsDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public Map<Long, Timestamp> findLatestByUsername(String username) throws DataAccessException {
+    public final Map<Long, Timestamp> findLatestByUsername(String username) throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_LATEST_BY_USERNAME_SQL, new Object[]{username}, rs -> {
-                Map<Long, Timestamp> m = new HashMap<>();
+                Map<Long, Timestamp> map = new HashMap<>(512);
                 while (rs.next()) {
                     Long feedId = rs.getLong("queue_id");
                     Timestamp maxImportTimestamp = rs.getTimestamp("max_import_timestamp");
-                    m.put(feedId, maxImportTimestamp);
+                    map.put(feedId, maxImportTimestamp);
                 }
-                return m;
+                return map;
             });
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage());
@@ -256,7 +255,7 @@ public class SubscriptionMetricsDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public int purgeOrphaned() throws DataAccessException {
+    public final int purgeOrphaned() throws DataAccessException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(PURGE_ORPHANED);
@@ -266,5 +265,13 @@ public class SubscriptionMetricsDao {
         }
 
         return rowsUpdated;
+    }
+
+    @Override
+    public final String toString() {
+        return "SubscriptionMetricsDao{" +
+                "jdbcTemplate=" + jdbcTemplate +
+                ", SUBSCRIPTION_METRICS_ROW_MAPPER=" + SUBSCRIPTION_METRICS_ROW_MAPPER +
+                '}';
     }
 }

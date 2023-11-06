@@ -15,6 +15,7 @@ import java.io.Serializable;
 import java.lang.reflect.Type;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -23,13 +24,14 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 /**
  * Data access object for managing theme configuration data in the application.
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "OverlyBroadCatchBlock"})
 @Component
 @Slf4j
 public class ThemeConfigDao {
 
     private static final Gson GSON = new Gson();
 
+    @SuppressWarnings({"EmptyClass", "AnonymousInnerClass"})
     private static final Type MAP_STRING_TYPE = new TypeToken<Map<String, String>>() {}.getType();
 
     @Autowired
@@ -39,15 +41,14 @@ public class ThemeConfigDao {
      * Default constructor; initializes the object.
      */
     ThemeConfigDao() {
-        super();
     }
 
-    final RowMapper<ThemeConfig> THEME_CONFIG_ROW_MAPPER = (rs, rowNum) -> {
+    private final RowMapper<ThemeConfig> THEME_CONFIG_ROW_MAPPER = (rs, rowNum) -> {
         // light
         Map<String, String> lightTheme = null;
         String lightThemeConfig = null;
         PGobject lightThemeConfigObj = (PGobject) rs.getObject("light_theme");
-        if (lightThemeConfigObj != null) {
+        if (null != lightThemeConfigObj) {
             lightThemeConfig = lightThemeConfigObj.getValue();
         }
         if (isNotBlank(lightThemeConfig)) {
@@ -58,7 +59,7 @@ public class ThemeConfigDao {
         Map<String, String> darkTheme = null;
         String darkThemeConfig = null;
         PGobject darkThemeConfigObj = (PGobject) rs.getObject("dark_theme");
-        if (darkThemeConfigObj != null) {
+        if (null != darkThemeConfigObj) {
             darkThemeConfig = darkThemeConfigObj.getValue();
         }
         if (isNotBlank(darkThemeConfig)) {
@@ -114,16 +115,17 @@ public class ThemeConfigDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "checkExistsByUserId", e.getMessage(), userId);
         }
+        //noinspection IfStatementWithIdenticalBranches
         if (alreadyExists) {
             // UPDATE PATH
             try {
-                List<String> params = new ArrayList<>();
+                Collection<String> params = new ArrayList<>(2);
                 Object[] args = new Object[2];
-                if (lightTheme != null) {
+                if (null != lightTheme) {
                     params.add("light_theme = ?::json");
                     args[0] = lightTheme;
                 }
-                if (darkTheme != null) {
+                if (null != darkTheme) {
                     params.add("dark_theme = ?::json");
                     args[0] = darkTheme;
                 }
@@ -134,7 +136,7 @@ public class ThemeConfigDao {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateThemeConfig", e.getMessage(), userId, lightTheme, darkTheme);
             }
-            if (!(rowsUpdated > 0)) {
+            if (!(0 < rowsUpdated)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "updateThemeConfig", userId, lightTheme, darkTheme);
             }
         } else {
@@ -145,7 +147,7 @@ public class ThemeConfigDao {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "insertThemeConfig", e.getMessage(), userId, lightTheme, darkTheme);
             }
-            if (!(rowsUpdated > 0)) {
+            if (!(0 < rowsUpdated)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "updateThemeConfig", userId, lightTheme, darkTheme);
             }
         }
@@ -161,7 +163,7 @@ public class ThemeConfigDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public Boolean checkExists(Long userId) throws DataAccessException {
+    public final Boolean checkExists(Long userId) throws DataAccessException {
         try {
             NumberFormat nf = NumberFormat.getIntegerInstance();
             nf.setGroupingUsed(false);
@@ -171,5 +173,13 @@ public class ThemeConfigDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "checkExists", e.getMessage(), userId);
         }
+    }
+
+    @Override
+    public final String toString() {
+        return "ThemeConfigDao{" +
+                "jdbcTemplate=" + jdbcTemplate +
+                ", THEME_CONFIG_ROW_MAPPER=" + THEME_CONFIG_ROW_MAPPER +
+                '}';
     }
 }

@@ -1,15 +1,18 @@
 package com.lostsidewalk.buffy.model;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Arrays;
 
 /**
  * The RenderedThumbnail class represents a serializable wrapper for thumbnail images.
  * It is used for storing rendered thumbnail images in Redis with a specified time-to-live (TTL).
  */
-@RedisHash(value = "thumbnail", timeToLive = 60 * 60 * 48) // TTL = 48 hours
+@Slf4j
+@RedisHash(value = "thumbnail", timeToLive = (60 * 60 * 48)) // TTL = 48 hours
 public class RenderedThumbnail implements Serializable {
 
     @Serial
@@ -48,7 +51,7 @@ public class RenderedThumbnail implements Serializable {
      * @return The transport identifier.
      */
     @SuppressWarnings("unused")
-    public String getTransportIdent() {
+    public final String getTransportIdent() {
         return transportIdent;
     }
 
@@ -58,7 +61,7 @@ public class RenderedThumbnail implements Serializable {
      * @param transportIdent The transport identifier to set.
      */
     @SuppressWarnings("unused")
-    public void setTransportIdent(String transportIdent) {
+    public final void setTransportIdent(String transportIdent) {
         this.transportIdent = transportIdent;
     }
 
@@ -68,7 +71,7 @@ public class RenderedThumbnail implements Serializable {
      * @return The thumbnail image data as a byte array.
      */
     @SuppressWarnings("unused")
-    public byte[] getImage() {
+    public final byte[] getImage() {
         return image;
     }
 
@@ -78,7 +81,15 @@ public class RenderedThumbnail implements Serializable {
      * @param image The thumbnail image data as a byte array to set.
      */
     @SuppressWarnings("unused")
-    public void setImage(byte[] image) {
+    public final void setImage(byte[] image) {
         this.image = image;
+    }
+
+    @Override
+    public final String toString() {
+        return "RenderedThumbnail{" +
+                "transportIdent='" + transportIdent + '\'' +
+                ", image=" + Arrays.toString(image) +
+                '}';
     }
 }

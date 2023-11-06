@@ -1,6 +1,7 @@
 package com.lostsidewalk.buffy.model;
 
 import com.rometools.rome.feed.rss.Channel;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serial;
@@ -12,7 +13,8 @@ import java.io.Serializable;
  *
  * @see com.rometools.rome.feed.rss.Channel
  */
-@RedisHash(value = "rssFeed")
+@Slf4j
+@RedisHash("rssFeed")
 public class RenderedRSSFeed implements Serializable {
 
     @Serial
@@ -51,7 +53,7 @@ public class RenderedRSSFeed implements Serializable {
      * @return The transport identifier.
      */
     @SuppressWarnings("unused")
-    public String getTransportIdent() {
+    public final String getTransportIdent() {
         return transportIdent;
     }
 
@@ -61,7 +63,7 @@ public class RenderedRSSFeed implements Serializable {
      * @param transportIdent The transport identifier to set.
      */
     @SuppressWarnings("unused")
-    public void setTransportIdent(String transportIdent) {
+    public final void setTransportIdent(String transportIdent) {
         this.transportIdent = transportIdent;
     }
 
@@ -71,7 +73,7 @@ public class RenderedRSSFeed implements Serializable {
      * @return The Channel object.
      */
     @SuppressWarnings("unused")
-    public Channel getChannel() {
+    public final Channel getChannel() {
         return channel;
     }
 
@@ -81,7 +83,15 @@ public class RenderedRSSFeed implements Serializable {
      * @param channel The Channel object to set.
      */
     @SuppressWarnings("unused")
-    public void setChannel(Channel channel) {
+    public final void setChannel(Channel channel) {
         this.channel = channel;
+    }
+
+    @Override
+    public final String toString() {
+        return "RenderedRSSFeed{" +
+                "transportIdent='" + transportIdent + '\'' +
+                ", channel=" + channel +
+                '}';
     }
 }

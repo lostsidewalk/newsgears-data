@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.sql.PreparedStatement;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static com.google.common.collect.Lists.newArrayListWithCapacity;
 import static java.util.Arrays.stream;
@@ -27,11 +28,12 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 /**
  * Data access object for managing subscription definitions in the application.
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "OverlyBroadCatchBlock"})
 @Slf4j
 @Component
 public class SubscriptionDefinitionDao {
 
+    private static final Pattern NON_DIGIT_OR_HYPHEN = Pattern.compile("[^\\d-]");
     @Autowired
     JdbcTemplate jdbcTemplate;
 
@@ -39,7 +41,6 @@ public class SubscriptionDefinitionDao {
      * Default constructor; initializes the object.
      */
     SubscriptionDefinitionDao() {
-        super();
     }
 
     private static final String CHECK_EXISTS_BY_URL_SQL = "select exists(select id from subscription_definitions where username = ? and url = ?)";
@@ -53,7 +54,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public Boolean checkExists(String username, String url) throws DataAccessException {
+    public final Boolean checkExists(String username, String url) throws DataAccessException {
         try {
             return jdbcTemplate.queryForObject(CHECK_EXISTS_BY_URL_SQL, new Object[] { username, url }, Boolean.class);
         } catch (Exception e) {
@@ -85,7 +86,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataConflictException  If a data conflict occurs due to duplicate keys.
      */
     @SuppressWarnings("unused")
-    public Long add(SubscriptionDefinition subscriptionDefinition) throws DataAccessException, DataUpdateException, DataConflictException {
+    public final Long add(SubscriptionDefinition subscriptionDefinition) throws DataAccessException, DataUpdateException, DataConflictException {
         int rowsUpdated;
         KeyHolder keyHolder;
         try {
@@ -110,7 +111,7 @@ public class SubscriptionDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "add", e.getMessage(), subscriptionDefinition);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "add", subscriptionDefinition);
         }
         return keyHolder.getKeyAs(Long.class);
@@ -126,7 +127,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataConflictException  If a data conflict occurs due to duplicate keys.
      */
     @SuppressWarnings("unused")
-    public List<Long> add(List<SubscriptionDefinition> subscriptionDefinitions) throws DataAccessException, DataUpdateException, DataConflictException {
+    public final List<Long> add(Iterable<? extends SubscriptionDefinition> subscriptionDefinitions) throws DataAccessException, DataUpdateException, DataConflictException {
 
         List<Long> newIds = newArrayListWithCapacity(size(subscriptionDefinitions));
         for (SubscriptionDefinition q : subscriptionDefinitions) {
@@ -136,7 +137,7 @@ public class SubscriptionDefinitionDao {
         return newIds;
     }
 
-    final RowMapper<SubscriptionDefinition> SUBSCRIPTION_DEFINITION_ROW_MAPPER = (rs, rowNum) -> {
+    private final RowMapper<SubscriptionDefinition> SUBSCRIPTION_DEFINITION_ROW_MAPPER = (rs, rowNum) -> {
         Long id = rs.getLong("id");
         Long queueId = rs.getLong("queue_id");
         String username = rs.getString("username");
@@ -147,7 +148,7 @@ public class SubscriptionDefinitionDao {
         String importSchedule = rs.getString("import_schedule");
         String queryConfig = null;
         PGobject queryConfigObj = (PGobject) rs.getObject("query_config");
-        if (queryConfigObj != null) {
+        if (null != queryConfigObj) {
             queryConfig = queryConfigObj.getValue();
         }
 
@@ -178,7 +179,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataUpdateException  If the data update operation fails.
      */
     @SuppressWarnings("unused")
-    public void deleteById(String username, long queueId, long id) throws DataAccessException, DataUpdateException {
+    public final void deleteById(String username, long queueId, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(DELETE_BY_ID_SQL, username, queueId, id);
@@ -186,7 +187,7 @@ public class SubscriptionDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "deleteById", e.getMessage(), id);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "deleteById", id);
         }
     }
@@ -199,16 +200,16 @@ public class SubscriptionDefinitionDao {
      * @throws DataUpdateException   If the data update operation fails.
      */
     @SuppressWarnings("unused")
-    public void deleteSubscriptions(List<Long> ids) throws DataAccessException, DataUpdateException {
+    public final void deleteSubscriptions(List<Long> ids) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
-            List<Object[]> args = ids.stream().map(i -> new Object[]{i}).collect(toList());
+            List<Object[]> args = ids.stream().map(id -> new Object[]{id}).collect(toList());
             rowsUpdated = stream(jdbcTemplate.batchUpdate(DELETE_BY_ID_SQL, args)).sum();
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "deleteQueries", e.getMessage(), ids);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "deleteQueries", ids);
         }
     }
@@ -222,8 +223,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataAccessException  If an error occurs while accessing the data.
      * @throws DataUpdateException  If the data update operation fails.
      */
-    @SuppressWarnings("UnusedReturnValue")
-    public void deleteByQueueId(Long queueId) throws DataAccessException, DataUpdateException {
+    public final void deleteByQueueId(Long queueId) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(DELETE_BY_QUEUE_ID_SQL, queueId);
@@ -231,7 +231,7 @@ public class SubscriptionDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "deleteByQueueId", e.getMessage(), queueId);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "deleteByQueueId", queueId);
         }
     }
@@ -245,7 +245,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<SubscriptionDefinition> findAll() throws DataAccessException {
+    public final List<SubscriptionDefinition> findAll() throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_ALL_SQL, SUBSCRIPTION_DEFINITION_ROW_MAPPER);
         } catch (Exception e) {
@@ -267,7 +267,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<SubscriptionDefinition> findAllActive() throws DataAccessException {
+    public final List<SubscriptionDefinition> findAllActive() throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_ALL_ACTIVE_SQL, SUBSCRIPTION_DEFINITION_ROW_MAPPER);
         } catch (Exception e) {
@@ -287,7 +287,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public SubscriptionDefinition findById(String username, Long id) throws DataAccessException {
+    public final SubscriptionDefinition findById(String username, Long id) throws DataAccessException {
         try {
             return jdbcTemplate.queryForObject(FIND_BY_ID_SQL, new Object[]{username, id}, SUBSCRIPTION_DEFINITION_ROW_MAPPER);
         } catch (Exception e) {
@@ -307,11 +307,11 @@ public class SubscriptionDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<SubscriptionDefinition> findByIds(String username, List<Long> ids) throws DataAccessException {
+    public final List<SubscriptionDefinition> findByIds(String username, List<Long> ids) throws DataAccessException {
         try {
             String inSql = ids.stream()
                     .map(Object::toString)
-                    .map(s -> s.replaceAll("[^\\d-]", EMPTY))
+                    .map(s -> NON_DIGIT_OR_HYPHEN.matcher(s).replaceAll(EMPTY))
                     .collect(joining(","));
             return jdbcTemplate.query(
                     String.format(FIND_BY_IDS_SQL_TEMPLATE, inSql),
@@ -334,7 +334,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<SubscriptionDefinition> findByQueueId(String username, Long queueId) throws DataAccessException {
+    public final List<SubscriptionDefinition> findByQueueId(String username, Long queueId) throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_BY_QUEUE_ID_SQL, new Object[]{username, queueId}, SUBSCRIPTION_DEFINITION_ROW_MAPPER);
         } catch (Exception e) {
@@ -355,7 +355,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<SubscriptionDefinition> findByQueueId(String username, Long queueId, String queryType) throws DataAccessException {
+    public final List<SubscriptionDefinition> findByQueueId(String username, Long queueId, String queryType) throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_BY_QUEUE_ID_AND_QUERY_TYPE_SQL, new Object[]{username, queueId, queryType}, SUBSCRIPTION_DEFINITION_ROW_MAPPER);
         } catch (Exception e) {
@@ -374,7 +374,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<SubscriptionDefinition> findByUsername(String username) throws DataAccessException {
+    public final List<SubscriptionDefinition> findByUsername(String username) throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_BY_USERNAME_SQL, new Object[]{username}, SUBSCRIPTION_DEFINITION_ROW_MAPPER);
         } catch (Exception e) {
@@ -399,7 +399,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public void updateSubscriptions(List<Object[]> subscriptionParams) throws DataAccessException {
+    public final void updateSubscriptions(List<Object[]> subscriptionParams) throws DataAccessException {
         try {
             jdbcTemplate.batchUpdate(UPDATE_SUBSCRIPTION_SQL, subscriptionParams);
         } catch (DuplicateKeyException e) {
@@ -419,7 +419,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public void updateImportSchedules(List<Object[]> subscriptionParams) throws DataAccessException {
+    public final void updateImportSchedules(List<Object[]> subscriptionParams) throws DataAccessException {
         try {
             jdbcTemplate.batchUpdate(UPDATE_IMPORT_SCHEDULE_SQL, subscriptionParams);
         } catch (Exception e) {
@@ -439,7 +439,7 @@ public class SubscriptionDefinitionDao {
      * @throws DataConflictException   If a data conflict occurs due to duplicate keys.
      */
     @SuppressWarnings("unused")
-    public List<Long> replaceByQueueId(Long queueId, List<SubscriptionDefinition> subscriptionDefinitions) throws DataAccessException, DataUpdateException, DataConflictException {
+    public final List<Long> replaceByQueueId(Long queueId, Iterable<? extends SubscriptionDefinition> subscriptionDefinitions) throws DataAccessException, DataUpdateException, DataConflictException {
         deleteByQueueId(queueId);
         return add(subscriptionDefinitions);
     }
@@ -454,12 +454,20 @@ public class SubscriptionDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<String> getSubscriptionUrlsByUsername(String username) throws DataAccessException {
+    public final List<String> getSubscriptionUrlsByUsername(String username) throws DataAccessException {
         try {
             return jdbcTemplate.queryForList(FIND_SUBSCRIPTION_URLS_BY_USERNAME, new Object[]{username}, String.class);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "getSubscriptionUrlsByUsername", e.getMessage(), username);
         }
+    }
+
+    @Override
+    public final String toString() {
+        return "SubscriptionDefinitionDao{" +
+                "jdbcTemplate=" + jdbcTemplate +
+                ", SUBSCRIPTION_DEFINITION_ROW_MAPPER=" + SUBSCRIPTION_DEFINITION_ROW_MAPPER +
+                '}';
     }
 }

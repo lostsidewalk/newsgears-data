@@ -1,6 +1,7 @@
 package com.lostsidewalk.buffy.model;
 
 import com.lostsidewalk.buffy.discovery.ThumbnailedFeedDiscovery;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serial;
@@ -12,7 +13,8 @@ import java.io.Serializable;
  *
  * @see ThumbnailedFeedDiscovery
  */
-@RedisHash(value = "feedDiscoveryInfo", timeToLive = 60 * 60 * 48) // TTL = 48 hours
+@Slf4j
+@RedisHash(value = "feedDiscoveryInfo", timeToLive = (60 * 60 * 48)) // TTL = 48 hours
 public class RenderedFeedDiscoveryInfo implements Serializable {
 
     @Serial
@@ -43,7 +45,7 @@ public class RenderedFeedDiscoveryInfo implements Serializable {
      * @return The ThumbnailedFeedDiscovery object.
      */
     @SuppressWarnings("unused")
-    public ThumbnailedFeedDiscovery getFeedDiscoveryInfo() {
+    public final ThumbnailedFeedDiscovery getFeedDiscoveryInfo() {
         return feedDiscoveryInfo;
     }
 
@@ -53,7 +55,14 @@ public class RenderedFeedDiscoveryInfo implements Serializable {
      * @param feedDiscoveryInfo The ThumbnailedFeedDiscovery object to set.
      */
     @SuppressWarnings("unused")
-    public void setFeedDiscoveryInfo(ThumbnailedFeedDiscovery feedDiscoveryInfo) {
+    public final void setFeedDiscoveryInfo(ThumbnailedFeedDiscovery feedDiscoveryInfo) {
         this.feedDiscoveryInfo = feedDiscoveryInfo;
+    }
+
+    @Override
+    public final String toString() {
+        return "RenderedFeedDiscoveryInfo{" +
+                "feedDiscoveryInfo=" + feedDiscoveryInfo +
+                '}';
     }
 }

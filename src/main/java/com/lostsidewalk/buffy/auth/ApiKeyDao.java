@@ -1,6 +1,8 @@
 package com.lostsidewalk.buffy.auth;
 
+import com.google.common.collect.ImmutableList;
 import com.lostsidewalk.buffy.AbstractDao;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -10,13 +12,13 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static java.sql.Types.NUMERIC;
 import static java.sql.Types.VARCHAR;
 
 /**
  * Data access object for managing API keys in the application.
  */
+@Slf4j
 @Component
 public class ApiKeyDao extends AbstractDao<ApiKey> {
 
@@ -32,18 +34,18 @@ public class ApiKeyDao extends AbstractDao<ApiKey> {
      * Default constructor; initializes the object.
      */
     ApiKeyDao() {
-        super();
     }
 
     @Override
-    protected void setupSQL() {
-        this.findByUserIdSQL = String.format("select * from %s where user_id = ? and application_id = '%s'", getTableName(), this.applicationId);
+    protected final void setupSQL() {
+        findByUserIdSQL = String.format("select * from %s where user_id = ? and application_id = '%s'", tableName, applicationId);
     }
 
     private static final String NAME_ATTRIBUTE = "api_key";
 
+    @SuppressWarnings("MethodReturnAlwaysConstant")
     @Override
-    protected String getNameAttribute() {
+    protected final String getNameAttribute() {
         return NAME_ATTRIBUTE;
     }
 
@@ -51,40 +53,45 @@ public class ApiKeyDao extends AbstractDao<ApiKey> {
     //
     //
 
-    private static final List<String> INSERT_ATTRIBUTES = newArrayList(
+    private static final List<String> INSERT_ATTRIBUTES = ImmutableList.of(
             "user_id",
             "api_key",
             "api_secret"
     );
 
     @Override
-    protected List<String> getInsertAttributes() {
+    protected final List<String> getInsertAttributes() {
         return INSERT_ATTRIBUTES;
     }
 
     @Override
-    protected void configureInsertParams(MapSqlParameterSource parameters, ApiKey entity) {
+    protected final void configureInsertParams(MapSqlParameterSource parameters, ApiKey entity) {
         configureCommonParams(parameters, entity);
     }
 
     @Override
-    protected void configureUpdateParams(MapSqlParameterSource parameters, ApiKey entity) {
+    protected final void setId(ApiKey entity, long id) {
+        entity.setId(id);
+    }
+
+    @Override
+    protected final void configureUpdateParams(MapSqlParameterSource parameters, ApiKey entity) {
         configureCommonParams(parameters, entity);
         parameters.addValue("id", entity.getId(), NUMERIC);
     }
 
-    private void configureCommonParams(MapSqlParameterSource parameters, ApiKey apiKey) {
+    private static void configureCommonParams(MapSqlParameterSource parameters, ApiKey apiKey) {
         parameters.addValue("user_id", apiKey.getUserId(), NUMERIC);
         parameters.addValue("api_key", apiKey.getApiKey(), VARCHAR);
         parameters.addValue("api_secret", apiKey.getApiSecret(), VARCHAR);
     }
 
     @Override
-    protected JdbcTemplate getJdbcTemplate() {
-        return this.jdbcTemplate;
+    protected final JdbcTemplate getJdbcTemplate() {
+        return jdbcTemplate;
     }
 
-    static final RowMapper<ApiKey> API_KEY_ROW_MAPPER = (rs, rowNum) -> {
+    private static final RowMapper<ApiKey> API_KEY_ROW_MAPPER = (rs, rowNum) -> {
         Long id = rs.getLong("id");
 
         Long userId = rs.getLong("user_id");
@@ -97,13 +104,20 @@ public class ApiKeyDao extends AbstractDao<ApiKey> {
     };
 
     @Override
-    protected RowMapper<ApiKey> getRowMapper() {
+    protected final RowMapper<ApiKey> getRowMapper() {
         return API_KEY_ROW_MAPPER;
     }
 
     @Override
-    protected String getTableName() {
+    protected final String getTableName() {
         return tableName;
+    }
+
+    @Override
+    protected final String getDescription() {
+        return "findByUserIdSQL='" + findByUserIdSQL + '\'' +
+                ", jdbcTemplate=" + jdbcTemplate +
+                ", tableName='" + tableName + '\'';
     }
 
     /**
@@ -113,9 +127,9 @@ public class ApiKeyDao extends AbstractDao<ApiKey> {
      * @return An `ApiKey` object representing the API key associated with the user, or `null` if the user ID is `null`.
      */
     @SuppressWarnings("unused")
-    public ApiKey findByUserId(Long userId) {
-        if (userId != null) {
-            return getJdbcTemplate().queryForObject(this.findByUserIdSQL, getRowMapper(), userId);
+    public final ApiKey findByUserId(Long userId) {
+        if (null != userId) {
+            return jdbcTemplate.queryForObject(findByUserIdSQL, API_KEY_ROW_MAPPER, userId);
         }
 
         return null;

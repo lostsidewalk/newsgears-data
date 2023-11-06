@@ -16,6 +16,7 @@ import java.util.List;
  *
  * @see RenderedFeedDiscoveryInfo
  */
+@SuppressWarnings("OverlyBroadCatchBlock")
 @Slf4j
 @Component
 @Profile("redis")
@@ -28,7 +29,6 @@ public class RenderedCatalogDao {
      * Default constructor; initializes the object.
      */
     RenderedCatalogDao() {
-        super();
     }
 
     /**
@@ -38,9 +38,9 @@ public class RenderedCatalogDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<RenderedFeedDiscoveryInfo> getCatalog() throws DataAccessException {
+    public final List<RenderedFeedDiscoveryInfo> getCatalog() throws DataAccessException {
         try {
-            HashOperations<String, Long, RenderedFeedDiscoveryInfo> hashOps = this.redisTemplate.opsForHash();
+            HashOperations<String, Long, RenderedFeedDiscoveryInfo> hashOps = redisTemplate.opsForHash();
             return hashOps.values("RENDERED_CATALOG");
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage());
@@ -56,13 +56,20 @@ public class RenderedCatalogDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public void update(RenderedFeedDiscoveryInfo renderedFeedDiscoveryInfo) throws DataAccessException {
+    public final void update(RenderedFeedDiscoveryInfo renderedFeedDiscoveryInfo) throws DataAccessException {
         try {
-            HashOperations<String, Long, RenderedFeedDiscoveryInfo> hashOps = this.redisTemplate.opsForHash();
+            HashOperations<String, Long, RenderedFeedDiscoveryInfo> hashOps = redisTemplate.opsForHash();
             hashOps.put("RENDERED_CATALOG", renderedFeedDiscoveryInfo.getFeedDiscoveryInfo().getId(), renderedFeedDiscoveryInfo);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updateCatalog", e.getMessage(), renderedFeedDiscoveryInfo);
         }
+    }
+
+    @Override
+    public final String toString() {
+        return "RenderedCatalogDao{" +
+                "redisTemplate=" + redisTemplate +
+                '}';
     }
 }

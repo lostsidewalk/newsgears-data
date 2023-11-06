@@ -1,5 +1,6 @@
 package com.lostsidewalk.buffy.auth;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.lostsidewalk.buffy.AbstractDao;
 import com.lostsidewalk.buffy.DataAccessException;
@@ -19,7 +20,6 @@ import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static java.sql.Types.*;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -27,6 +27,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 /**
  * Data access object for managing users in the application.
  */
+@SuppressWarnings("OverlyBroadCatchBlock")
 @Slf4j
 @Component
 public class UserDao extends AbstractDao<User> {
@@ -44,7 +45,6 @@ public class UserDao extends AbstractDao<User> {
      * Default constructor; initializes the object.
      */
     UserDao() {
-        super();
     }
 
     private static final String FIND_BY_EMAIL_ADDRESS_SQL = "select * from %s u where email_address = ? and application_id = '%s'";
@@ -82,29 +82,30 @@ public class UserDao extends AbstractDao<User> {
     private String updateSubscriptionExpDateSql;
 
     @Override
-    protected void setupSQL() {
-        this.findByEmailAddressSQL = String.format(FIND_BY_EMAIL_ADDRESS_SQL, tableName, applicationId);
-        this.findByCustomerIdSQL = String.format(FIND_BY_CUSTOMER_ID_SQL, tableName, applicationId);
-        this.findByAuthProviderIdSQL = String.format(FIND_BY_AUTH_PROVIDER_ID_SQL, tableName, applicationId);
-        this.findByApiKeySQL = String.format(FIND_BY_API_KEY_SQL, tableName, apiKeysTableName);
-        this.countByUsernameOrEmailAddressSQL = String.format(COUNT_BY_USERNAME_OR_EMAIL_ADDRESS_SQL, tableName, applicationId);
-        this.setVerifiedSQL = String.format(SET_VERIFIED_SQL, tableName, applicationId);
+    protected final void setupSQL() {
+        findByEmailAddressSQL = String.format(FIND_BY_EMAIL_ADDRESS_SQL, tableName, applicationId);
+        findByCustomerIdSQL = String.format(FIND_BY_CUSTOMER_ID_SQL, tableName, applicationId);
+        findByAuthProviderIdSQL = String.format(FIND_BY_AUTH_PROVIDER_ID_SQL, tableName, applicationId);
+        findByApiKeySQL = String.format(FIND_BY_API_KEY_SQL, tableName, apiKeysTableName);
+        countByUsernameOrEmailAddressSQL = String.format(COUNT_BY_USERNAME_OR_EMAIL_ADDRESS_SQL, tableName, applicationId);
+        setVerifiedSQL = String.format(SET_VERIFIED_SQL, tableName, applicationId);
 
-        this.updateAuthClaimSql = String.format(UPDATE_AUTH_CLAIM_SQL, tableName);
-        this.updatePwResetClaimSql = String.format(UPDATE_PW_RESET_CLAIM_SQL, tableName);
-        this.updateVerificationClaimSql = String.format(UPDATE_VERIFICATION_CLAIM_SQL, tableName);
-        this.updatePwResetAuthClaimSql = String.format(UPDATE_PW_RESET_AUTH_CLAIM_SQL, tableName);
-        this.updatePasswordSql = String.format(UPDATE_PASSWORD_SQL, tableName);
-        this.updateEmailAddressSql = String.format(UPDATE_EMAIL_ADDRESS_SQL, tableName);
-        this.updateCustomerIdSql = String.format(UPDATE_CUSTOMER_ID_SQL, tableName);
-        this.updateSubscriptionStatusSql = String.format(UPDATE_SUBSCRIPTION_STATUS_SQL, tableName);
-        this.updateSubscriptionExpDateSql = String.format(UPDATE_SUBSCRIPTION_EXP_DATE_SQL, tableName);
+        updateAuthClaimSql = String.format(UPDATE_AUTH_CLAIM_SQL, tableName);
+        updatePwResetClaimSql = String.format(UPDATE_PW_RESET_CLAIM_SQL, tableName);
+        updateVerificationClaimSql = String.format(UPDATE_VERIFICATION_CLAIM_SQL, tableName);
+        updatePwResetAuthClaimSql = String.format(UPDATE_PW_RESET_AUTH_CLAIM_SQL, tableName);
+        updatePasswordSql = String.format(UPDATE_PASSWORD_SQL, tableName);
+        updateEmailAddressSql = String.format(UPDATE_EMAIL_ADDRESS_SQL, tableName);
+        updateCustomerIdSql = String.format(UPDATE_CUSTOMER_ID_SQL, tableName);
+        updateSubscriptionStatusSql = String.format(UPDATE_SUBSCRIPTION_STATUS_SQL, tableName);
+        updateSubscriptionExpDateSql = String.format(UPDATE_SUBSCRIPTION_EXP_DATE_SQL, tableName);
     }
 
     private static final String NAME_ATTRIBUTE = "name";
 
+    @SuppressWarnings("MethodReturnAlwaysConstant")
     @Override
-    protected String getNameAttribute() {
+    protected final String getNameAttribute() {
         return NAME_ATTRIBUTE;
     }
 
@@ -112,7 +113,7 @@ public class UserDao extends AbstractDao<User> {
     //
     //
 
-    private static final List<String> INSERT_ATTRIBUTES = newArrayList(
+    private static final List<String> INSERT_ATTRIBUTES = ImmutableList.of(
             "name",
             "password",
             "email_address",
@@ -131,22 +132,27 @@ public class UserDao extends AbstractDao<User> {
     );
 
     @Override
-    protected List<String> getInsertAttributes() {
+    protected final List<String> getInsertAttributes() {
         return INSERT_ATTRIBUTES;
     }
 
     @Override
-    protected void configureInsertParams(MapSqlParameterSource parameters, User entity) {
+    protected final void configureInsertParams(MapSqlParameterSource parameters, User entity) {
         configureCommonParams(parameters, entity);
     }
 
     @Override
-    protected void configureUpdateParams(MapSqlParameterSource parameters, User entity) {
+    protected final void setId(User entity, long id) {
+        entity.setId(id);
+    }
+
+    @Override
+    protected final void configureUpdateParams(MapSqlParameterSource parameters, User entity) {
         configureCommonParams(parameters, entity);
         parameters.addValue("id", entity.getId(), NUMERIC);
     }
 
-    private void configureCommonParams(MapSqlParameterSource parameters, User entity) {
+    private static void configureCommonParams(MapSqlParameterSource parameters, User entity) {
         parameters.addValue("name", entity.getUsername(), VARCHAR);
         parameters.addValue("password", entity.getPassword(), VARCHAR);
         parameters.addValue("email_address", entity.getEmailAddress(), VARCHAR);
@@ -165,11 +171,11 @@ public class UserDao extends AbstractDao<User> {
     }
 
     @Override
-    protected JdbcTemplate getJdbcTemplate() {
-        return this.jdbcTemplate;
+    protected final JdbcTemplate getJdbcTemplate() {
+        return jdbcTemplate;
     }
 
-    static final RowMapper<User> USER_ROW_MAPPER = (rs, rowNum) -> {
+    private static final RowMapper<User> USER_ROW_MAPPER = (rs, rowNum) -> {
         Long id = rs.getLong("id");
 
         String username = rs.getString("name");
@@ -219,13 +225,35 @@ public class UserDao extends AbstractDao<User> {
     };
 
     @Override
-    protected RowMapper<User> getRowMapper() {
+    protected final RowMapper<User> getRowMapper() {
         return USER_ROW_MAPPER;
     }
 
     @Override
-    protected String getTableName() {
+    protected final String getTableName() {
         return tableName;
+    }
+
+    @Override
+    protected final String getDescription() {
+        return "jdbcTemplate=" + jdbcTemplate +
+                ", tableName='" + tableName + '\'' +
+                ", apiKeysTableName='" + apiKeysTableName + '\'' +
+                ", findByEmailAddressSQL='" + findByEmailAddressSQL + '\'' +
+                ", findByCustomerIdSQL='" + findByCustomerIdSQL + '\'' +
+                ", findByAuthProviderIdSQL='" + findByAuthProviderIdSQL + '\'' +
+                ", findByApiKeySQL='" + findByApiKeySQL + '\'' +
+                ", countByUsernameOrEmailAddressSQL='" + countByUsernameOrEmailAddressSQL + '\'' +
+                ", setVerifiedSQL='" + setVerifiedSQL + '\'' +
+                ", updateAuthClaimSql='" + updateAuthClaimSql + '\'' +
+                ", updatePwResetClaimSql='" + updatePwResetClaimSql + '\'' +
+                ", updateVerificationClaimSql='" + updateVerificationClaimSql + '\'' +
+                ", updatePwResetAuthClaimSql='" + updatePwResetAuthClaimSql + '\'' +
+                ", updatePasswordSql='" + updatePasswordSql + '\'' +
+                ", updateEmailAddressSql='" + updateEmailAddressSql + '\'' +
+                ", updateCustomerIdSql='" + updateCustomerIdSql + '\'' +
+                ", updateSubscriptionStatusSql='" + updateSubscriptionStatusSql + '\'' +
+                ", updateSubscriptionExpDateSql='" + updateSubscriptionExpDateSql + '\'';
     }
 
     /**
@@ -236,10 +264,10 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public User findByEmailAddress(String emailAddress) throws DataAccessException {
+    public final User findByEmailAddress(String emailAddress) throws DataAccessException {
         if (isNotBlank(emailAddress)) {
             try {
-                List<User> results = getJdbcTemplate().query(findByEmailAddressSQL, getRowMapper(), emailAddress);
+                List<User> results = jdbcTemplate.query(findByEmailAddressSQL, USER_ROW_MAPPER, emailAddress);
                 return isEmpty(results) ? null : results.get(0); // email_address should be unique
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
@@ -258,10 +286,10 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public User findByCustomerId(String customerId) throws DataAccessException {
+    public final User findByCustomerId(String customerId) throws DataAccessException {
         if (isNotBlank(customerId)) {
             try {
-                List<User> results = getJdbcTemplate().query(findByCustomerIdSQL, getRowMapper(), customerId);
+                List<User> results = jdbcTemplate.query(findByCustomerIdSQL, USER_ROW_MAPPER, customerId);
                 return isEmpty(results) ? null : results.get(0); // customer_id should be unique
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
@@ -281,10 +309,10 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public User findByAuthProviderId(AuthProvider authProvider, String authProviderId) throws DataAccessException {
-        if (authProvider != null && isNotBlank(authProviderId)) {
+    public final User findByAuthProviderId(AuthProvider authProvider, String authProviderId) throws DataAccessException {
+        if (null != authProvider && isNotBlank(authProviderId)) {
             try {
-                List<User> results = getJdbcTemplate().query(findByAuthProviderIdSQL, getRowMapper(), authProvider.name(), authProviderId);
+                List<User> results = jdbcTemplate.query(findByAuthProviderIdSQL, USER_ROW_MAPPER, authProvider.name(), authProviderId);
                 return isEmpty(results) ? null : results.get(0); // auth_provider, auth_provider_id should be unique
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
@@ -303,10 +331,10 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public User findByApiKey(String apiKey) throws DataAccessException {
+    public final User findByApiKey(String apiKey) throws DataAccessException {
         if (isNotBlank(apiKey)) {
             try {
-                List<User> results = getJdbcTemplate().query(findByApiKeySQL, getRowMapper(), apiKey);
+                List<User> results = jdbcTemplate.query(findByApiKeySQL, USER_ROW_MAPPER, apiKey);
                 return isEmpty(results) ? null : results.get(0);
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
@@ -326,11 +354,11 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public boolean checkExists(String username, String emailAddress) throws DataAccessException {
+    public final boolean checkExists(String username, String emailAddress) throws DataAccessException {
         if (isNotBlank(username) && isNotBlank(emailAddress)) {
             try {
-                Integer ct = getJdbcTemplate().queryForObject(countByUsernameOrEmailAddressSQL, Integer.class, username, emailAddress);
-                return ct != null && ct > 0;
+                Integer ct = jdbcTemplate.queryForObject(countByUsernameOrEmailAddressSQL, Integer.class, username, emailAddress);
+                return null != ct && 0 < ct;
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "checkExists", e.getMessage(), username, emailAddress);
@@ -349,16 +377,16 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataUpdateException If the update operation fails.
      */
     @SuppressWarnings("unused")
-    public void setVerified(String username, boolean isVerified) throws DataAccessException, DataUpdateException {
+    public final void setVerified(String username, boolean isVerified) throws DataAccessException, DataUpdateException {
         if (isNotBlank(username)) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(setVerifiedSQL, isVerified, username);
+                rowsUpdated = jdbcTemplate.update(setVerifiedSQL, isVerified, username);
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "setVerified", e.getMessage(), username, isVerified);
             }
-            if (!(rowsUpdated > 0)) {
+            if (!(0 < rowsUpdated)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "setVerified", username, isVerified);
             }
         }
@@ -372,16 +400,16 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataUpdateException If the update operation fails.
      */
     @SuppressWarnings("unused")
-    public void updateAuthClaim(User user) throws DataAccessException, DataUpdateException {
-        if (user != null) {
+    public final void updateAuthClaim(User user) throws DataAccessException, DataUpdateException {
+        if (null != user) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(updateAuthClaimSql, user.getAuthClaim(), user.getId());
+                rowsUpdated = jdbcTemplate.update(updateAuthClaimSql, user.getAuthClaim(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateAuthClaim", e.getMessage(), user.getAuthClaim(), user.getId());
             }
-            if (!(rowsUpdated > 0)) {
+            if (!(0 < rowsUpdated)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "updateAuthClaim", user.getAuthClaim(), user.getId());
             }
         }
@@ -395,16 +423,16 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataUpdateException If the update operation fails.
      */
     @SuppressWarnings("unused")
-    public void updatePwResetClaim(User user) throws DataAccessException, DataUpdateException {
-        if (user != null) {
+    public final void updatePwResetClaim(User user) throws DataAccessException, DataUpdateException {
+        if (null != user) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(updatePwResetClaimSql, user.getPwResetClaim(), user.getId());
+                rowsUpdated = jdbcTemplate.update(updatePwResetClaimSql, user.getPwResetClaim(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updatePwResetClaim", e.getMessage(), user.getPwResetClaim(), user.getId());
             }
-            if (!(rowsUpdated > 0)) {
+            if (!(0 < rowsUpdated)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "updatePwResetClaim", user.getPwResetClaim(), user.getId());
             }
         }
@@ -418,16 +446,16 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataUpdateException If the update operation fails.
      */
     @SuppressWarnings("unused")
-    public void updateVerificationClaim(User user) throws DataAccessException, DataUpdateException {
-        if (user != null) {
+    public final void updateVerificationClaim(User user) throws DataAccessException, DataUpdateException {
+        if (null != user) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(updateVerificationClaimSql, user.getVerificationClaim(), user.getId());
+                rowsUpdated = jdbcTemplate.update(updateVerificationClaimSql, user.getVerificationClaim(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateVerificationClaim", e.getMessage(), user.getVerificationClaim(), user.getId());
             }
-            if (!(rowsUpdated > 0)) {
+            if (!(0 < rowsUpdated)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "updateVerificationClaim", user.getVerificationClaim(), user.getId());
             }
         }
@@ -441,16 +469,16 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataUpdateException If the update operation fails.
      */
     @SuppressWarnings("unused")
-    public void updatePwResetAuthClaim(User user) throws DataAccessException, DataUpdateException {
-        if (user != null) {
+    public final void updatePwResetAuthClaim(User user) throws DataAccessException, DataUpdateException {
+        if (null != user) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(updatePwResetAuthClaimSql, user.getPwResetAuthClaim(), user.getId());
+                rowsUpdated = jdbcTemplate.update(updatePwResetAuthClaimSql, user.getPwResetAuthClaim(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updatePwResetAuthClaim", e.getMessage(), user.getPwResetAuthClaim(), user.getId());
             }
-            if (!(rowsUpdated > 0)) {
+            if (!(0 < rowsUpdated)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "updatePwResetAuthClaim", user.getPwResetClaim(), user.getId());
             }
         }
@@ -464,16 +492,16 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataUpdateException If the update operation fails.
      */
     @SuppressWarnings("unused")
-    public void updatePassword(User user) throws DataAccessException, DataUpdateException {
-        if (user != null) {
+    public final void updatePassword(User user) throws DataAccessException, DataUpdateException {
+        if (null != user) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(updatePasswordSql, user.getPassword(), user.getId());
+                rowsUpdated = jdbcTemplate.update(updatePasswordSql, user.getPassword(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updatePassword", e.getMessage(), user.getId()); // password not shown
             }
-            if (!(rowsUpdated > 0)) {
+            if (!(0 < rowsUpdated)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "updatePassword", user.getId()); // password not shown
             }
         }
@@ -487,16 +515,16 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataUpdateException If the update operation fails.
      */
     @SuppressWarnings("unused")
-    public void updateEmailAddress(User user) throws DataAccessException, DataUpdateException {
-        if (user != null) {
+    public final void updateEmailAddress(User user) throws DataAccessException, DataUpdateException {
+        if (null != user) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(updateEmailAddressSql, user.getEmailAddress());
+                rowsUpdated = jdbcTemplate.update(updateEmailAddressSql, user.getEmailAddress());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateEmailAddress", e.getMessage(), user.getId(), user.getEmailAddress());
             }
-            if (!(rowsUpdated > 0)) {
+            if (!(0 < rowsUpdated)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "updateEmailAddress", user.getId(), user.getEmailAddress());
             }
         }
@@ -510,16 +538,16 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataUpdateException If the update operation fails.
      */
     @SuppressWarnings("unused")
-    public void updateCustomerId(User user) throws DataAccessException, DataUpdateException {
-        if (user != null) {
+    public final void updateCustomerId(User user) throws DataAccessException, DataUpdateException {
+        if (null != user) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(updateCustomerIdSql, user.getCustomerId(), user.getId());
+                rowsUpdated = jdbcTemplate.update(updateCustomerIdSql, user.getCustomerId(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateCustomerId", e.getMessage(), user.getId(), user.getEmailAddress());
             }
-            if (!(rowsUpdated > 0)) {
+            if (!(0 < rowsUpdated)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "updateCustomerId", user.getId(), user.getEmailAddress());
             }
         }
@@ -533,16 +561,16 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataUpdateException If the update operation fails.
      */
     @SuppressWarnings("unused")
-    public void updateSubscriptionStatus(User user) throws DataAccessException, DataUpdateException {
-        if (user != null) {
+    public final void updateSubscriptionStatus(User user) throws DataAccessException, DataUpdateException {
+        if (null != user) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(updateSubscriptionStatusSql, user.getSubscriptionStatus(), user.getId());
+                rowsUpdated = jdbcTemplate.update(updateSubscriptionStatusSql, user.getSubscriptionStatus(), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateSubscriptionStatus", e.getMessage(), user.getId(), user.getSubscriptionStatus());
             }
-            if (!(rowsUpdated > 0)) {
+            if (!(0 < rowsUpdated)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "updateSubscriptionStatus", user.getId(), user.getSubscriptionStatus());
             }
         }
@@ -556,16 +584,16 @@ public class UserDao extends AbstractDao<User> {
      * @throws DataUpdateException If the update operation fails.
      */
     @SuppressWarnings("unused")
-    public void updateSubscriptionExpDate(User user) throws DataAccessException, DataUpdateException {
-        if (user != null) {
+    public final void updateSubscriptionExpDate(User user) throws DataAccessException, DataUpdateException {
+        if (null != user) {
             int rowsUpdated;
             try {
-                rowsUpdated = getJdbcTemplate().update(updateSubscriptionExpDateSql, toTimestamp(user.getSubscriptionExpDate()), user.getId());
+                rowsUpdated = jdbcTemplate.update(updateSubscriptionExpDateSql, toTimestamp(user.getSubscriptionExpDate()), user.getId());
             } catch (Exception e) {
                 log.error("Something horrible happened due to: {}", e.getMessage());
                 throw new DataAccessException(getClass().getSimpleName(), "updateSubscriptionExpDate", e.getMessage(), user.getId(), user.getSubscriptionExpDate());
             }
-            if (!(rowsUpdated > 0)) {
+            if (!(0 < rowsUpdated)) {
                 throw new DataUpdateException(getClass().getSimpleName(), "updateSubscriptionExpDate", user.getId(), user.getSubscriptionExpDate());
             }
         }
@@ -578,14 +606,14 @@ public class UserDao extends AbstractDao<User> {
     private static final ImmutableMap<String, Integer> NULLABLE_SQL_TYPES = ImmutableMap.of();
 
     @Override
-    protected int getSqlType(String parameterName) {
+    protected final int getSqlType(String parameterName) {
         return NULLABLE_SQL_TYPES.getOrDefault(parameterName, super.getSqlType(parameterName));
     }
 
     private static final ZoneId ZONE_ID = ZoneId.systemDefault();
 
-    private static Timestamp toTimestamp(Date d) {
-        Instant i = d != null ? OffsetDateTime.from(d.toInstant().atZone(ZONE_ID)).toInstant() : null;
-        return i != null ? Timestamp.from(i) : null;
+    private static Timestamp toTimestamp(Date date) {
+        Instant instant = null != date ? OffsetDateTime.from(date.toInstant().atZone(ZONE_ID)).toInstant() : null;
+        return null != instant ? Timestamp.from(instant) : null;
     }
 }

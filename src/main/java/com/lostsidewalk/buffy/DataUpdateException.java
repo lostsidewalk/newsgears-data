@@ -1,11 +1,15 @@
 package com.lostsidewalk.buffy;
 
+import java.io.Serial;
 import java.util.Arrays;
 
 /**
  * Exception class representing errors related to data update operations.
  */
 public class DataUpdateException extends Exception {
+
+    @Serial
+    private static final long serialVersionUID = 982312564357568982L;
 
     /**
      * Constructs a new DataUpdateException with information about the origin of the error.

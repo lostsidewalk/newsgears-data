@@ -1,5 +1,6 @@
 package com.lostsidewalk.buffy;
 
+import java.io.Serial;
 import java.util.Arrays;
 
 /**
@@ -7,6 +8,9 @@ import java.util.Arrays;
  * This exception is typically thrown when an error occurs during database or data retrieval operations.
  */
 public class DataAccessException extends Exception {
+
+    @Serial
+    private static final long serialVersionUID = 982340598623450982L;
 
     /**
      * Constructs a new DataAccessException with the specified error details.

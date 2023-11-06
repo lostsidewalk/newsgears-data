@@ -1,5 +1,6 @@
 package com.lostsidewalk.buffy;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +13,7 @@ import org.springframework.data.redis.core.RedisTemplate;
  * This class is activated when the "redis" profile is active.
  */
 @SuppressWarnings("deprecation")
+@Slf4j
 @Profile("redis")
 @Configuration
 public class DataConfig {
@@ -38,7 +40,6 @@ public class DataConfig {
      * Default constructor; initializes the object.
      */
     DataConfig() {
-        super();
     }
 
     /**
@@ -46,6 +47,7 @@ public class DataConfig {
      *
      * @return A JedisConnectionFactory instance.
      */
+    @SuppressWarnings({"WeakerAccess", "DesignForExtension"})
     @Bean
     JedisConnectionFactory jedisConnectionFactory() {
         JedisConnectionFactory connectionFactory = new JedisConnectionFactory();
@@ -61,10 +63,20 @@ public class DataConfig {
      *
      * @return A RedisTemplate instance.
      */
+    @SuppressWarnings({"WeakerAccess", "DesignForExtension"})
     @Bean
     RedisTemplate<String, Object> redisTemplate() {
         RedisTemplate<String, Object> rssFeedTemplate = new RedisTemplate<>();
         rssFeedTemplate.setConnectionFactory(jedisConnectionFactory());
         return rssFeedTemplate;
+    }
+
+    @Override
+    public final String toString() {
+        return "DataConfig{" +
+                "redisHostName='" + redisHostName + '\'' +
+                ", redisPassword='" + redisPassword + '\'' +
+                ", redisPort=" + redisPort +
+                '}';
     }
 }

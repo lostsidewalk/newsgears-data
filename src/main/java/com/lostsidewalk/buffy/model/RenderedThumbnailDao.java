@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
  * stored in Redis. It provides methods for retrieving and storing thumbnail images associated with
  * specific transport identifiers.
  */
+@SuppressWarnings("OverlyBroadCatchBlock")
 @Slf4j
 @Component
 @Profile("redis")
@@ -25,7 +26,6 @@ public class RenderedThumbnailDao {
      * Default constructor; initializes the object.
      */
     RenderedThumbnailDao() {
-        super();
     }
 
     /**
@@ -36,9 +36,9 @@ public class RenderedThumbnailDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public RenderedThumbnail findThumbnailByTransportIdent(String transportIdent) throws DataAccessException {
+    public final RenderedThumbnail findThumbnailByTransportIdent(String transportIdent) throws DataAccessException {
         try {
-            HashOperations<String, String, RenderedThumbnail> hashOps = this.redisTemplate.opsForHash();
+            HashOperations<String, String, RenderedThumbnail> hashOps = redisTemplate.opsForHash();
             return hashOps.get("THUMBNAILS", transportIdent);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage());
@@ -54,13 +54,20 @@ public class RenderedThumbnailDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public void putThumbnailAtTransportIdent(String transportIdent, RenderedThumbnail thumbnail) throws DataAccessException {
+    public final void putThumbnailAtTransportIdent(String transportIdent, RenderedThumbnail thumbnail) throws DataAccessException {
         try {
-            HashOperations<String, String, RenderedThumbnail> hashOps = this.redisTemplate.opsForHash();
+            HashOperations<String, String, RenderedThumbnail> hashOps = redisTemplate.opsForHash();
             hashOps.put("THUMBNAILS", transportIdent, thumbnail);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "putThumbnailAtTransportIdent", e.getMessage(), transportIdent);
         }
+    }
+
+    @Override
+    public final String toString() {
+        return "RenderedThumbnailDao{" +
+                "redisTemplate=" + redisTemplate +
+                '}';
     }
 }

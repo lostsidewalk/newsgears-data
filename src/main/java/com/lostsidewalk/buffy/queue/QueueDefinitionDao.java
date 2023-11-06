@@ -24,8 +24,10 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static com.lostsidewalk.buffy.queue.QueueDefinition.computeImageHash;
 import static java.util.Optional.ofNullable;
@@ -33,12 +35,13 @@ import static java.util.Optional.ofNullable;
 /**
  * Data access object for managing queue definitions in the application.
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "OverlyBroadCatchBlock"})
 @Slf4j
 @Component
 public class QueueDefinitionDao {
 
     private static final Gson GSON = new Gson();
+    private static final Pattern DIGITS_PATTERN = Pattern.compile("\\D");
 
     @Autowired
     JdbcTemplate jdbcTemplate;
@@ -47,7 +50,6 @@ public class QueueDefinitionDao {
      * Default constructor; initializes the object.
      */
     QueueDefinitionDao() {
-        super();
     }
 
     private static final String REQUIRES_AUTHENTICATION_BY_TRANSPORT_IDENT_SQL = "select is_authenticated from queue_definitions where transport_ident = ?";
@@ -60,7 +62,7 @@ public class QueueDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public Boolean requiresAuthentication(String transportIdent) throws DataAccessException {
+    public final Boolean requiresAuthentication(String transportIdent) throws DataAccessException {
         try {
             return jdbcTemplate.queryForObject(REQUIRES_AUTHENTICATION_BY_TRANSPORT_IDENT_SQL, new Object[] { transportIdent }, Boolean.class);
         } catch (Exception e) {
@@ -79,7 +81,7 @@ public class QueueDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public Boolean checkExists(String id) throws DataAccessException {
+    public final Boolean checkExists(String id) throws DataAccessException {
         try {
             String sql = String.format(CHECK_EXISTS_BY_ID_SQL_TEMPLATE, id);
             return jdbcTemplate.queryForObject(sql, null, Boolean.class);
@@ -119,7 +121,7 @@ public class QueueDefinitionDao {
      * @throws DataConflictException If a data conflict or duplication is encountered during the insertion.
      */
     @SuppressWarnings("unused")
-    public Long add(QueueDefinition queueDefinition) throws DataAccessException, DataUpdateException, DataConflictException {
+    public final Long add(QueueDefinition queueDefinition) throws DataAccessException, DataUpdateException, DataConflictException {
         int rowsUpdated;
         KeyHolder keyHolder;
         try {
@@ -151,13 +153,13 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "add", e.getMessage(), queueDefinition);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "add", queueDefinition);
         }
         return keyHolder.getKeyAs(Long.class);
     }
 
-    final RowMapper<QueueDefinition> QUEUE_DEFINITION_ROW_MAPPER = (rs, rowNum) -> {
+    private final RowMapper<QueueDefinition> QUEUE_DEFINITION_ROW_MAPPER = (rs, rowNum) -> {
         Long id = rs.getLong("id");
         String queueIdent = rs.getString("queue_ident");
         String queueTitle = rs.getString("queue_title");
@@ -168,7 +170,7 @@ public class QueueDefinitionDao {
         String queueStatus = rs.getString("queue_status");
         String exportConfig = null;
         PGobject exportConfigObj = (PGobject) rs.getObject("export_config");
-        if (exportConfigObj != null) {
+        if (null != exportConfigObj) {
             exportConfig = exportConfigObj.getValue();
         }
         String copyright = rs.getString("copyright");
@@ -180,7 +182,7 @@ public class QueueDefinitionDao {
         Timestamp created = rs.getTimestamp("created");
         Timestamp lastModified = rs.getTimestamp("last_modified");
 
-        QueueDefinition f = QueueDefinition.from(
+        QueueDefinition queueDefinition = QueueDefinition.from(
                 queueIdent,
                 queueTitle,
                 queueDesc,
@@ -198,9 +200,9 @@ public class QueueDefinitionDao {
                 created,
                 lastModified
         );
-        f.setId(id);
+        queueDefinition.setId(id);
 
-        return f;
+        return queueDefinition;
     };
 
     private static final String MARK_QUEUE_AS_DELETED_BY_ID_SQL = "update queue_definitions set is_deleted = true, last_modified = current_timestamp where id = ? and username = ?";
@@ -214,7 +216,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If the deletion operation fails or no rows were affected.
      */
     @SuppressWarnings("unused")
-    public void deleteById(String username, long id) throws DataAccessException, DataUpdateException {
+    public final void deleteById(String username, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(MARK_QUEUE_AS_DELETED_BY_ID_SQL, id, username);
@@ -222,7 +224,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "deleteById", e.getMessage(), username, id);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "deleteById", id);
         }
     }
@@ -236,7 +238,7 @@ public class QueueDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<QueueDefinition> findAll() throws DataAccessException {
+    public final List<QueueDefinition> findAll() throws DataAccessException {
         try {
             return jdbcTemplate.query(FIND_ALL_SQL, QUEUE_DEFINITION_ROW_MAPPER);
         } catch (Exception e) {
@@ -255,7 +257,7 @@ public class QueueDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public List<QueueDefinition> findByUser(String username) throws DataAccessException {
+    public final List<QueueDefinition> findByUser(String username) throws DataAccessException {
         try {
             List<QueueDefinition> results = jdbcTemplate.query(FIND_BY_USER, new Object[]{username}, QUEUE_DEFINITION_ROW_MAPPER);
             return results.isEmpty() ? null : results;
@@ -276,7 +278,7 @@ public class QueueDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public QueueDefinition findByQueueId(String username, Long id) throws DataAccessException {
+    public final QueueDefinition findByQueueId(String username, Long id) throws DataAccessException {
         try {
             List<QueueDefinition> results = jdbcTemplate.query(FIND_BY_QUEUE_ID_SQL, new Object[] { username, id }, QUEUE_DEFINITION_ROW_MAPPER);
             return results.isEmpty() ? null : results.get(0);
@@ -296,7 +298,7 @@ public class QueueDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public QueueDefinition findByTransportIdent(String transportIdent) throws DataAccessException {
+    public final QueueDefinition findByTransportIdent(String transportIdent) throws DataAccessException {
         try {
             List<QueueDefinition> results = jdbcTemplate.query(FIND_BY_TRANSPORT_IDENT_SQL, new Object[] { transportIdent }, QUEUE_DEFINITION_ROW_MAPPER);
             return results.isEmpty() ? null : results.get(0);
@@ -317,7 +319,7 @@ public class QueueDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public String resolveTransportIdent(String username, String queueIdent) throws DataAccessException {
+    public final String resolveTransportIdent(String username, String queueIdent) throws DataAccessException {
         try {
             return jdbcTemplate.queryForObject(FIND_TRANSPORT_IDENT_SQL, new Object[] { username, queueIdent }, String.class);
         } catch (Exception e) {
@@ -338,7 +340,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void updateLastDeployed(String username, Long queueId, Date lastDeployed) throws DataAccessException, DataUpdateException {
+    public final void updateLastDeployed(String username, Long queueId, Date lastDeployed) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_LAST_DEPLOYED_TIMESTAMP_SQL, toTimestamp(lastDeployed), queueId, username);
@@ -346,7 +348,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updateLastDeployed", e.getMessage(), username, queueId, lastDeployed);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updateLastDeployed", username, queueId, lastDeployed);
         }
     }
@@ -362,9 +364,9 @@ public class QueueDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public Boolean checkDeployed(String username, long id) throws DataAccessException {
+    public final Boolean checkDeployed(String username, long id) throws DataAccessException {
         try {
-            String sql = String.format(CHECK_DEPLOYED_BY_ID_SQL_TEMPLATE, String.valueOf(id).replaceAll("\\D", ""));
+            String sql = String.format(CHECK_DEPLOYED_BY_ID_SQL_TEMPLATE, DIGITS_PATTERN.matcher(String.valueOf(id)).replaceAll(""));
             return jdbcTemplate.queryForObject(sql, new Object[]{username}, Boolean.class);
         } catch (Exception e) {
             log.error("Something horrible happened due to: {}", e.getMessage());
@@ -383,7 +385,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void clearLastDeployed(String username, long id) throws DataAccessException, DataUpdateException {
+    public final void clearLastDeployed(String username, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(CLEAR_LAST_DEPLOYED_BY_ID_SQL, id, username);
@@ -391,7 +393,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "clearLastDeployed", e.getMessage(), username, id);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "clearLastDeployed", username, id);
         }
     }
@@ -408,7 +410,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void updateQueueStatus(String username, long id, QueueStatus queueStatus) throws DataAccessException, DataUpdateException {
+    public final void updateQueueStatus(String username, long id, QueueStatus queueStatus) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_queue_status_BY_ID, queueStatus.toString(), id, username);
@@ -416,7 +418,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updateQueueStatus", e.getMessage(), username, id, queueStatus);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updateQueueStatus", username, id, queueStatus);
         }
     }
@@ -442,8 +444,8 @@ public class QueueDefinitionDao {
      * @throws DataConflictException If a data conflict or duplication is encountered during the update.
      */
     @SuppressWarnings("unused")
-    public void updateQueue(String username, Long id, String queueIdent, String description, String title, String generator,
-                       Serializable exportConfig, String copyright, String language, String queueImgSrc, Boolean isAuthenticated)
+    public final void updateQueue(String username, Long id, String queueIdent, String description, String title, String generator,
+                                  Serializable exportConfig, String copyright, String language, String queueImgSrc, Boolean isAuthenticated)
             throws DataAccessException, DataUpdateException, DataConflictException {
         String queueImgTransportIdent = null;
         try {
@@ -453,45 +455,45 @@ public class QueueDefinitionDao {
             // ignored
         }
 
-        StringBuilder sqlBuilder = new StringBuilder();
-        List<Object> sqlParams = new ArrayList<>();
-        if (queueIdent != null) {
+        StringBuilder sqlBuilder = new StringBuilder(512);
+        Collection<Object> sqlParams = new ArrayList<>(12);
+        if (null != queueIdent) {
             sqlBuilder.append("queue_ident = ?, ");
             sqlParams.add(queueIdent);
         }
-        if (description != null) {
+        if (null != description) {
             sqlBuilder.append("queue_desc = ?, ");
             sqlParams.add(description);
         }
-        if (title != null) {
+        if (null != title) {
             sqlBuilder.append("queue_title = ?, ");
             sqlParams.add(title);
         }
-        if (generator != null) {
+        if (null != generator) {
             sqlBuilder.append("queue_feed_generator = ?, ");
             sqlParams.add(generator);
         }
-        if (exportConfig != null) {
+        if (null != exportConfig) {
             sqlBuilder.append("export_config = ?::json, ");
             sqlParams.add(exportConfig);
         }
-        if (copyright != null) {
+        if (null != copyright) {
             sqlBuilder.append("copyright = ?, ");
             sqlParams.add(copyright);
         }
-        if (language != null) {
+        if (null != language) {
             sqlBuilder.append("language = ?, ");
             sqlParams.add(language);
         }
-        if (queueImgSrc != null) {
+        if (null != queueImgSrc) {
             sqlBuilder.append("queue_img_src = ?, ");
             sqlParams.add(queueImgSrc);
         }
-        if (queueImgTransportIdent != null) {
+        if (null != queueImgTransportIdent) {
             sqlBuilder.append("queue_img_transport_ident = ?, ");
             sqlParams.add(queueImgTransportIdent);
         }
-        if (isAuthenticated != null) {
+        if (null != isAuthenticated) {
             sqlBuilder.append("is_authenticated = ? ");
             sqlParams.add(isAuthenticated);
         }
@@ -515,7 +517,7 @@ public class QueueDefinitionDao {
             throw new DataAccessException(getClass().getSimpleName(), "updateQueue", e.getMessage(),
                     username, queueIdent, description, title, generator, exportConfig, copyright, language, queueImgSrc);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updateQueue",
                     username, queueIdent, description, title, generator, exportConfig, copyright, language, queueImgSrc);
         }
@@ -538,7 +540,7 @@ public class QueueDefinitionDao {
      * @throws DataConflictException If a data conflict or duplication is encountered during the update.
      */
     @SuppressWarnings("unused")
-    public void updateQueueIdent(String username, Long id, String queueIdent) throws DataAccessException, DataUpdateException, DataConflictException {
+    public final void updateQueueIdent(String username, Long id, String queueIdent) throws DataAccessException, DataUpdateException, DataConflictException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_QUEUE_IDENT_BY_ID, queueIdent, id, username);
@@ -548,7 +550,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updateQueueIdent", e.getMessage(), username, id, queueIdent);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updateQueueIdent", username, id, queueIdent);
         }
     }
@@ -565,7 +567,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void updateQueueTitle(String username, Long id, String queueTitle) throws DataAccessException, DataUpdateException {
+    public final void updateQueueTitle(String username, Long id, String queueTitle) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_QUEUE_TITLE_BY_ID, queueTitle, id, username);
@@ -573,7 +575,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updateQueueTitle", e.getMessage(), username, id, queueTitle);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updateQueueTitle", username, id, queueTitle);
         }
     }
@@ -590,7 +592,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void updateQueueDescription(String username, Long id, String queueDescription) throws DataAccessException, DataUpdateException {
+    public final void updateQueueDescription(String username, Long id, String queueDescription) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_QUEUE_DESCRIPTION_BY_ID, queueDescription, id, username);
@@ -598,7 +600,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updateQueueDescription", e.getMessage(), username, id, queueDescription);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updateQueueDescription", username, id, queueDescription);
         }
     }
@@ -615,7 +617,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void updateQueueGenerator(String username, Long id, String queueGenerator) throws DataAccessException, DataUpdateException {
+    public final void updateQueueGenerator(String username, Long id, String queueGenerator) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_QUEUE_GENERATOR_BY_ID, queueGenerator, id, username);
@@ -623,7 +625,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updateQueueGenerator", e.getMessage(), username, id, queueGenerator);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updateQueueGenerator", username, id, queueGenerator);
         }
     }
@@ -640,7 +642,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void updateCopyright(String username, Long id, String copyright) throws DataAccessException, DataUpdateException {
+    public final void updateCopyright(String username, Long id, String copyright) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_QUEUE_COPYRIGHT_BY_ID, copyright, id, username);
@@ -648,7 +650,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updateCopyright", e.getMessage(), username, id, copyright);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updateCopyright", username, id, copyright);
         }
     }
@@ -665,7 +667,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void updateLanguage(String username, Long id, String language) throws DataAccessException, DataUpdateException {
+    public final void updateLanguage(String username, Long id, String language) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_LANGUAGE_BY_ID, language, id, username);
@@ -673,7 +675,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updateLanguage", e.getMessage(), username, id, language);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updateLanguage", username, id, language);
         }
     }
@@ -690,7 +692,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void updateQueueAuthenticationRequirement(String username, Long id, Boolean isRequired) throws DataAccessException, DataUpdateException {
+    public final void updateQueueAuthenticationRequirement(String username, Long id, Boolean isRequired) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_QUEUE_AUTH_REQUIREMENT_ID, isRequired, id, username);
@@ -698,7 +700,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updateQueueAuthenticationRequirement", e.getMessage(), username, id, isRequired);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updateQueueAuthenticationRequirement", username, id, isRequired);
         }
     }
@@ -715,7 +717,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void updateQueueImageSource(String username, Long id, String queueImageSource) throws DataAccessException, DataUpdateException {
+    public final void updateQueueImageSource(String username, Long id, String queueImageSource) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_QUEUE_IMAGE_SOURCE_BY_ID, queueImageSource, id, username);
@@ -723,7 +725,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updateQueueImageSource", e.getMessage(), username, id, queueImageSource);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updateQueueImageSource", username, id, queueImageSource);
         }
     }
@@ -740,7 +742,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void updateExportConfig(String username, Long id, Serializable exportConfig) throws DataAccessException, DataUpdateException {
+    public final void updateExportConfig(String username, Long id, Serializable exportConfig) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(UPDATE_QUEUE_EXPORT_CONFIG_BY_ID, exportConfig.toString(), id, username);
@@ -748,7 +750,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "updateQueueExportConfig", e.getMessage(), username, id, exportConfig.toString());
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "updateQueueExportConfig", username, id, exportConfig.toString());
         }
     }
@@ -764,7 +766,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void clearQueueTitle(String username, long id) throws DataAccessException, DataUpdateException {
+    public final void clearQueueTitle(String username, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(CLEAR_QUEUE_TITLE_BY_ID_SQL, id, username);
@@ -772,7 +774,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "clearQueueTitle", e.getMessage(), username, id);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "clearQueueTitle", username, id);
         }
     }
@@ -788,7 +790,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void clearQueueDescription(String username, long id) throws DataAccessException, DataUpdateException {
+    public final void clearQueueDescription(String username, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(CLEAR_QUEUE_DESCRIPTION_BY_ID_SQL, id, username);
@@ -796,7 +798,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "clearQueueDescription", e.getMessage(), username, id);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "clearQueueDescription", username, id);
         }
     }
@@ -812,7 +814,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void clearQueueGenerator(String username, long id) throws DataAccessException, DataUpdateException {
+    public final void clearQueueGenerator(String username, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(CLEAR_QUEUE_GENERATOR_BY_ID_SQL, id, username);
@@ -820,7 +822,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "clearQueueGenerator", e.getMessage(), username, id);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "clearQueueGenerator", username, id);
         }
     }
@@ -836,7 +838,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void clearQueueCopyright(String username, long id) throws DataAccessException, DataUpdateException {
+    public final void clearQueueCopyright(String username, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(CLEAR_QUEUE_COPYRIGHT_BY_ID_SQL, id, username);
@@ -844,7 +846,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "clearQueueCopyright", e.getMessage(), username, id);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "clearQueueCopyright", username, id);
         }
     }
@@ -860,7 +862,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void clearQueueImageSource(String username, long id) throws DataAccessException, DataUpdateException {
+    public final void clearQueueImageSource(String username, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(CLEAR_QUEUE_IMG_SRC_BY_ID_SQL, id, username);
@@ -868,7 +870,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "clearQueueImageSource", e.getMessage(), username, id);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "clearQueueImageSource", username, id);
         }
     }
@@ -884,7 +886,7 @@ public class QueueDefinitionDao {
      * @throws DataUpdateException If an error occurs during the data update operation.
      */
     @SuppressWarnings("unused")
-    public void clearExportConfig(String username, long id) throws DataAccessException, DataUpdateException {
+    public final void clearExportConfig(String username, long id) throws DataAccessException, DataUpdateException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(CLEAR_QUEUE_EXPORT_CONFIG_BY_ID_SQL, id, username);
@@ -892,7 +894,7 @@ public class QueueDefinitionDao {
             log.error("Something horrible happened due to: {}", e.getMessage());
             throw new DataAccessException(getClass().getSimpleName(), "clearQueueImageSource", e.getMessage(), username, id);
         }
-        if (!(rowsUpdated > 0)) {
+        if (!(0 < rowsUpdated)) {
             throw new DataUpdateException(getClass().getSimpleName(), "clearQueueImageSource", username, id);
         }
     }
@@ -912,7 +914,7 @@ public class QueueDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public Long resolveId(String username, String queueIdent) throws DataAccessException {
+    public final Long resolveId(String username, String queueIdent) throws DataAccessException {
         try {
             return jdbcTemplate.queryForObject(FIND_ID_SQL, new Object[] { username, queueIdent }, Long.class);
         } catch (Exception e) {
@@ -932,7 +934,7 @@ public class QueueDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public String resolveIdent(String username, Long queueId) throws DataAccessException {
+    public final String resolveIdent(String username, Long queueId) throws DataAccessException {
         try {
             return jdbcTemplate.queryForObject(FIND_IDENT_SQL, new Object[] { username, queueId }, String.class);
         } catch (Exception e) {
@@ -947,9 +949,9 @@ public class QueueDefinitionDao {
 
     private static final ZoneId ZONE_ID = ZoneId.systemDefault();
 
-    private static Timestamp toTimestamp(Date d) {
-        Instant i = d != null ? OffsetDateTime.from(d.toInstant().atZone(ZONE_ID)).toInstant() : null;
-        return i != null ? Timestamp.from(i) : null;
+    private static Timestamp toTimestamp(Date date) {
+        Instant instant = null != date ? OffsetDateTime.from(date.toInstant().atZone(ZONE_ID)).toInstant() : null;
+        return null != instant ? Timestamp.from(instant) : null;
     }
 
     //
@@ -965,7 +967,7 @@ public class QueueDefinitionDao {
      * @throws DataAccessException If an error occurs while accessing the data.
      */
     @SuppressWarnings("unused")
-    public int purgeDeleted() throws DataAccessException {
+    public final int purgeDeleted() throws DataAccessException {
         int rowsUpdated;
         try {
             rowsUpdated = jdbcTemplate.update(PURGE_DELETED_SQL);
@@ -975,5 +977,13 @@ public class QueueDefinitionDao {
         }
 
         return rowsUpdated;
+    }
+
+    @Override
+    public final String toString() {
+        return "QueueDefinitionDao{" +
+                "jdbcTemplate=" + jdbcTemplate +
+                ", QUEUE_DEFINITION_ROW_MAPPER=" + QUEUE_DEFINITION_ROW_MAPPER +
+                '}';
     }
 }

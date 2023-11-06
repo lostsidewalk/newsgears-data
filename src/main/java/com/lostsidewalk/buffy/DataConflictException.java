@@ -1,5 +1,6 @@
 package com.lostsidewalk.buffy;
 
+import java.io.Serial;
 import java.util.Arrays;
 
 /**
@@ -7,6 +8,9 @@ import java.util.Arrays;
  * This exception is typically thrown when an attempt to insert or update data results in a conflict or duplication.
  */
 public class DataConflictException extends Exception {
+
+    @Serial
+    private static final long serialVersionUID = 9823405923350982L;
 
     /**
      * Constructs a new DataConflictException with the specified error details.
