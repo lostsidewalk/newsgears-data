@@ -12,7 +12,7 @@ import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- *
+ * Data access object for managing locks in the application.
  */
 @Slf4j
 @Component
