@@ -36,7 +36,16 @@ public abstract class AbstractDao<T> {
      * The application ID retrieved from configuration.
      */
     @Value("${newsgears.data.application-id}")
-    protected ApplicationId applicationId;
+    ApplicationId applicationId;
+
+    /**
+     * Returns the configured application ID.
+     *
+     * @return the configured ApplicationId object.
+     */
+    protected final ApplicationId getApplicationId() {
+        return applicationId;
+    }
 
     /**
      * Subclasses should provide the JdbcTemplate to use for database operations.

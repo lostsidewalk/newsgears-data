@@ -3,6 +3,7 @@ package com.lostsidewalk.buffy.auth;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.lostsidewalk.buffy.AbstractDao;
+import com.lostsidewalk.buffy.ApplicationId;
 import com.lostsidewalk.buffy.DataAccessException;
 import com.lostsidewalk.buffy.DataUpdateException;
 import lombok.extern.slf4j.Slf4j;
@@ -83,6 +84,7 @@ public class UserDao extends AbstractDao<User> {
 
     @Override
     protected final void setupSQL() {
+        ApplicationId applicationId = getApplicationId();
         findByEmailAddressSQL = String.format(FIND_BY_EMAIL_ADDRESS_SQL, tableName, applicationId);
         findByCustomerIdSQL = String.format(FIND_BY_CUSTOMER_ID_SQL, tableName, applicationId);
         findByAuthProviderIdSQL = String.format(FIND_BY_AUTH_PROVIDER_ID_SQL, tableName, applicationId);

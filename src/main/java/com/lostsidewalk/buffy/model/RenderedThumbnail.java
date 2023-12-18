@@ -72,7 +72,7 @@ public class RenderedThumbnail implements Serializable {
      */
     @SuppressWarnings("unused")
     public final byte[] getImage() {
-        return image;
+        return image.clone();
     }
 
     /**
@@ -82,7 +82,7 @@ public class RenderedThumbnail implements Serializable {
      */
     @SuppressWarnings("unused")
     public final void setImage(byte[] image) {
-        this.image = image;
+        this.image = image.clone();
     }
 
     @Override

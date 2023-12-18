@@ -47,7 +47,7 @@ public class RoleDao extends AbstractDao<Role> {
                 + " join %s uir on uir.role = r.name "
                 + " join users u on u.name = uir.username "
                 + " where u.name = ? and r.application_id = '%s'",
-                tableName, uirTableName, applicationId);
+                tableName, uirTableName, getApplicationId());
     }
 
     private static final String NAME_ATTRIBUTE = "name";

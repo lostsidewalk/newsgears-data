@@ -38,7 +38,7 @@ public class ApiKeyDao extends AbstractDao<ApiKey> {
 
     @Override
     protected final void setupSQL() {
-        findByUserIdSQL = String.format("select * from %s where user_id = ? and application_id = '%s'", tableName, applicationId);
+        findByUserIdSQL = String.format("select * from %s where user_id = ? and application_id = '%s'", tableName, getApplicationId());
     }
 
     private static final String NAME_ATTRIBUTE = "api_key";
